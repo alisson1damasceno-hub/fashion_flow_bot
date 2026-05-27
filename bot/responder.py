@@ -72,8 +72,6 @@ def responder(intencao, slots, dados):
         df_est = dados["estoque_materiais"]
 
         costura = df_cap[df_cap["setor"] == "costura"].iloc[0]
-        corte = df_cap[df_cap["setor"] == "corte"].iloc[0]
-
         cap_disponivel = int(costura["disponivel_hoje_pecas"])
         viavel_capacidade = quantidade <= cap_disponivel
 
@@ -204,7 +202,6 @@ def responder(intencao, slots, dados):
         return (
             f"Para {quantidade} peças de {produto.replace('_', ' ')}{pers_txt}: "
             f"prazo estimado de {r['prazo_min_dias']} a {r['prazo_max_dias']} dias úteis. "
-            f"{r['observacao']}. "
             "Prazo confirmado pelo setor de vendas no fechamento do pedido."
         )
 
@@ -320,7 +317,7 @@ def responder(intencao, slots, dados):
             f"{r['observacao']}"
         )
 
-    # ── Resposta padrão do CSV (intenções diretas e guiadas) ─────
+    # ── Resposta padrão do CSV ───────────────────────────────────
     df_int = dados["intencoes"]
     row = df_int[df_int["id_intencao"] == intencao]
     if not row.empty:

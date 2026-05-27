@@ -17,7 +17,7 @@ def extrair_slots(mensagem):
     slots = {}
 
     # ── quantidade ──────────────────────────────────────────────
-    match = re.search(r'\b(\d+)\s*(pecas?|camisetas?|polos?|moletons?|uniformes?|vestidos?|calcas?|bermudas?|unidades?|un|pcs)?\b', t)
+    match = re.search(r'\b(\d+)\s*(pecas?|camisetas?|polos?|uniformes?|vestidos?|calcas?|bermudas?|unidades?|un|pcs)?\b', t)
     if match:
         slots["quantidade"] = int(match.group(1))
 
@@ -30,7 +30,8 @@ def extrair_slots(mensagem):
     "baby look":              "baby_look",
     "camiseta":               "camiseta_basica",
     "polo":                   "polo",
-    "moletom":                "moletom",
+    "moletons":               "moletom",
+"moletom":                "moletom",
     "jaqueta":                "jaqueta",
     "calca jeans":            "calca_jeans",
     "calca alfaiataria":      "calca_alfaiataria",
