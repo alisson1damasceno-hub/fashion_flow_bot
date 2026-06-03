@@ -8,11 +8,90 @@ def normalizar(texto):
     return texto
 
 
-def responder(intencao, slots, dados):
+def responder(intencao, slots, dados, sessao=None, mensagem=""):
+
     """
     Recebe a intenção classificada, os slots extraídos e todos os dados.
     Retorna a resposta em texto para o usuário.
     """
+# ── Seleção de menu ─────────────────────────────────────────
+    if intencao == "selecao_opcao":
+        from rapidfuzz import fuzz
+
+        opcao_menu = sessao.get("aguardando_opcao") if sessao else None
+        opcoes_por_menu = {
+            "menu_tecido": {
+                "algodao basico": "algodao_basico", "algodao penteado": "algodao_penteado",
+                "algodao pima": "algodao_pima", "dry fit": "dry_fit", "viscose": "viscose",
+                "suplex": "suplex", "moletom flanelado": "moletom_flanelado",
+                "moletom peluciado": "moletom_peluciado", "malha mista": "malha_mista",
+                "linho": "linho", "jeans": "jeans", "alfaiataria": "alfaiataria",
+            },
+            "menu_personalizacao": {
+                "silkscreen": "silkscreen", "dtf": "dtf",
+                "bordado": "bordado", "etiqueta": "etiqueta", "nenhuma": "nenhuma",
+            },
+            "menu_produto": {
+                "camiseta basica": "camiseta_basica", "camiseta premium": "camiseta_premium",
+                "polo": "polo", "baby look": "baby_look", "moletom": "moletom",
+                "jaqueta": "jaqueta", "calca jeans": "calca_jeans", "legging": "legging",
+                "bermuda": "bermuda", "regata": "regata", "vestido midi": "vestido_midi",
+                "jogger": "jogger", "uniforme polo": "uniforme_polo",
+                "uniforme jaleco": "uniforme_jaleco", "oversized": "oversized",
+            },
+            "menu_qualidade": {
+                "originalidade das pecas": "qualidade_originalidade",
+                "durabilidade": "qualidade_durabilidade",
+                "controle de qualidade": "qualidade_controle",
+                "defeitos de fabricacao": "qualidade_defeito",
+                "certificacoes": "qualidade_certificacoes",
+            },
+        }
+
+        opcoes = opcoes_por_menu.get(opcao_menu, {})
+
+        # usuário digitou um número (ex: "2")
+        try:
+            numero = int(mensagem.strip())
+            lista = list(opcoes.values())
+            if 1 <= numero <= len(lista):
+                escolha = lista[numero - 1]
+                if sessao:
+                    sessao["slots_acumulados"][opcao_menu.replace("menu_", "")] = escolha
+                    sessao["aguardando_opcao"] = None
+                df_int = dados["intencoes"]
+                row_sub = df_int[df_int["id_intencao"] == escolha]
+                if not row_sub.empty:
+                    return row_sub.iloc[0]["resposta_padrao"]
+                return f"Entendido! Registrei: {escolha.replace('_', ' ')}. Como posso continuar te ajudando?"
+        except (ValueError, TypeError):
+            pass
+
+        # usuário digitou o nome (ex: "bordado")
+        melhor_score = 0
+        melhor_valor = None
+        msg_norm = normalizar(mensagem)
+        for chave, valor in opcoes.items():
+            score = fuzz.partial_ratio(normalizar(chave), msg_norm)
+            if score > melhor_score:
+                melhor_score = score
+                melhor_valor = valor
+
+        if melhor_score >= 75:
+            if sessao:
+                sessao["slots_acumulados"][opcao_menu.replace("menu_", "")] = melhor_valor
+                sessao["aguardando_opcao"] = None
+            # busca resposta direta no CSV para menus de subtópico
+            df_int = dados["intencoes"]
+            row_sub = df_int[df_int["id_intencao"] == melhor_valor]
+            if not row_sub.empty:
+                return row_sub.iloc[0]["resposta_padrao"]
+            return f"Entendido! Registrei: {melhor_valor.replace('_', ' ')}. Como posso continuar te ajudando?"
+
+        # não entendeu — mostra o menu de novo
+        lista_opcoes = "\n".join(f"  {i+1}. {c.title()}" for i, c in enumerate(opcoes.keys()))
+        return f"Não entendi sua escolha. Por favor, selecione uma opção:\n{lista_opcoes}"
+
 
     # ── Status do pedido ─────────────────────────────────────────
     if intencao == "status_pedido":
@@ -324,9 +403,15 @@ def responder(intencao, slots, dados):
         resposta = row.iloc[0]["resposta_padrao"]
         followup = row.iloc[0]["pergunta_followup"]
         if followup and str(followup) != "nan":
+            if "|" in str(followup):
+                if sessao:
+                    sessao["aguardando_opcao"] = f"menu_{intencao}"
+                opcoes = str(followup).split("|")
+                lista = "\n".join(f"  {i+1}. {o.strip()}" for i, o in enumerate(opcoes))
+                return f"{resposta}\n{lista}"
             return f"{resposta}\n{followup}"
         return resposta
-
+    
     # ── Fallback ─────────────────────────────────────────────────
     return (
         "Não entendi bem sua pergunta. Posso ajudar com: "

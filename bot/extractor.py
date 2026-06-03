@@ -8,7 +8,7 @@ def normalizar(texto):
     texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
     return texto
 
-def extrair_slots(mensagem):
+def extrair_slots(mensagem, sessao=None):
     """
     Recebe a mensagem do usuário e retorna um dicionário
     com os slots identificados.
@@ -69,23 +69,23 @@ def extrair_slots(mensagem):
 
     # ── tecido ───────────────────────────────────────────────────
     tecidos = {
-        "algodao pima":        "algodao_pima",
-        "algodao penteado":    "algodao_penteado",
-        "algodao basico":      "algodao_basico",
-        "dry.?fit":            "dry_fit",
-        "dry fit":             "dry_fit",
-        "malha mista":         "malha_mista",
-        "moletom flanelado":   "moletom_flanelado",
-        "moletom peluciado":   "moletom_peluciado",
-        "viscose":             "viscose",
-        "linho":               "linho",
-        "suplex":              "suplex",
-        "jeans":               "jeans",
-        "alfaiataria":         "alfaiataria",
-        "la":                  "la",
-        "tencel":              "tencel",
-        "algodao":             "algodao_basico",
-    }
+    "algodao pima":        "algodao_pima",
+    "algodao penteado":    "algodao_penteado",
+    "algodao basico":      "algodao_basico",
+    r"\bdry.?fit\b":       "dry_fit",
+    r"\bdry fit\b":        "dry_fit",
+    "malha mista":         "malha_mista",
+    "moletom flanelado":   "moletom_flanelado",
+    "moletom peluciado":   "moletom_peluciado",
+    r"\bviscose\b":        "viscose",
+    r"\blinho\b":          "linho",
+    r"\bsuplex\b":         "suplex",
+    r"\bjeans\b":          "jeans",
+    "alfaiataria":         "alfaiataria",
+    r"\bla\b":             "la",
+    r"\btencel\b":         "tencel",
+    r"\balgodao\b":        "algodao_basico",
+}
     for chave, valor in tecidos.items():
         if re.search(chave, t):
             slots["tecido"] = valor
@@ -158,9 +158,14 @@ def extrair_slots(mensagem):
         slots["metragem"] = float(match_metros.group(1).replace(",", "."))
 
     # ── prazo desejado ───────────────────────────────────────────
-    match_prazo = re.search(r'em\s*(\d+)\s*dias?|ate\s*(\d+)\s*dias?|prazo de\s*(\d+)', t)
+    match_prazo = re.search(r'em\s*(\d+)\s*dias?|ate\s*(\d+)\s*dias?|prazo de\s*(\d+)\s*dias?', t)
     if match_prazo:
         valor = next(v for v in match_prazo.groups() if v is not None)
         slots["prazo_desejado"] = int(valor)
+
+    # mescla com slots da sessão se houver
+    if sessao:
+        from bot.contexto import merge_slots
+        slots = merge_slots(sessao, slots)
 
     return slots
