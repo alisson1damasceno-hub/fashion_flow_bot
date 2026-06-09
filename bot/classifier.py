@@ -24,16 +24,20 @@ def classificar(mensagem, slots, intencoes, sessao=None):
     # herda intenção anterior se usuário trouxe quantidade nova explícita
     import re as _re
     if sessao and sessao.get("ultimo_assunto") in (
-        "combinado_prazo_qtd_produto", "combinado_preco_qtd_produto"
+        "combinado_prazo_qtd_produto", "combinado_preco_qtd_produto", "viabilidade_producao"
     ):
-        if slots.get("quantidade") and slots.get("produto"):
+        slots_merged = {**sessao.get("slots_acumulados", {}), **slots}
+        if slots_merged.get("quantidade") and slots_merged.get("produto"):
             if _re.search(r'\d+', mensagem):
                 return sessao["ultimo_assunto"]
 
     # número solto sem menu ativo — ignora
     if re.match(r'^\d+$', mensagem.strip()):
         if not (sessao and sessao.get("aguardando_opcao")):
-            return "fallback"
+            if not (sessao and sessao.get("ultimo_assunto") in (
+                "combinado_prazo_qtd_produto", "combinado_preco_qtd_produto", "viabilidade_producao"
+            )):
+                return "fallback"
 
     # ── Passo 1: regras por slots (alta prioridade) ──────────────
 
