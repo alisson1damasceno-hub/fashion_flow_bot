@@ -1,14 +1,29 @@
+"""
+Loop de chat no terminal — Fashion Flow Bot.
+"""
+import sys
 from bot.loader import carregar_dados
 from bot.extractor import extrair_slots
 from bot.classifier import classificar
 from bot.responder import responder
-from bot.contexto import criar_sessao, resetar_sessao, is_despedida, is_casual
+from bot.contexto import (
+    criar_sessao, resetar_sessao,
+    is_despedida, is_casual,
+    merge_com_contexto, atualizar_sessao_pos_turno,
+)
+
 
 def main():
-    print("=" * 50)
+    # Garante UTF-8 no terminal Windows
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+    print("=" * 60)
     print("  Fashion Flow Bot — Atendimento de Produção")
-    print("=" * 50)
-    print("Digite sua dúvida ou 'sair' para encerrar.\n")
+    print("=" * 60)
+    print("Digite sua dúvida. Comandos: 'sair' encerra, '/contexto' mostra a memória.\n")
 
     dados = carregar_dados()
     sessao = criar_sessao()
@@ -27,24 +42,38 @@ def main():
             print("Bot: Até logo! Qualquer dúvida é só chamar.")
             break
 
+        # Comando de debug: mostra o foco atual e o histórico
+        if mensagem.startswith("/contexto"):
+            print(f"  foco_atual: {sessao['foco_atual']}")
+            print(f"  ultimo_assunto: {sessao['ultimo_assunto']}")
+            print(f"  aguardando_opcao: {sessao['aguardando_opcao']}")
+            print(f"  historico ({len(sessao['historico_turnos'])} turnos):")
+            for i, t in enumerate(sessao["historico_turnos"][-5:], 1):
+                print(f"    {i}. [{t['intencao']}] {t['msg']!r}")
+            print()
+            continue
+
+        # Despedida pura → reseta sessão
         if is_despedida(mensagem):
-            print("Bot: Até logo! Se precisar de mais alguma coisa, estou por aqui.\n")
+            print("Bot: Até logo! Se precisar, é só voltar.\n")
             sessao = resetar_sessao(sessao)
             continue
 
+        # Casual ("ok", "blz", "obrigado") → não muda assunto
         if is_casual(mensagem) and sessao["ativa"]:
-            print("Bot: Pode continuar!\n")
+            print("Bot: Beleza, pode continuar!\n")
             continue
 
-        slots = extrair_slots(mensagem, sessao)
-        intencao = classificar(mensagem, slots, dados["intencoes"], sessao)
-        resposta = responder(intencao, slots, dados, sessao, mensagem)
-
-        sessao["ativa"] = True
-        sessao["ultimo_assunto"] = intencao
+        # Pipeline principal
+        em_menu = bool(sessao.get("aguardando_opcao"))
+        slots_turno = extrair_slots(mensagem, em_menu=em_menu)
+        slots_efetivos = merge_com_contexto(slots_turno, sessao)
+        intencao = classificar(mensagem, slots_turno, slots_efetivos, dados["intencoes"], sessao)
+        resposta = responder(intencao, slots_efetivos, dados, sessao, mensagem)
+        atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, resposta)
 
         print(f"Bot: {resposta}\n")
 
+
 if __name__ == "__main__":
     main()
-    

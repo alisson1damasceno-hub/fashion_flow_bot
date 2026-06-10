@@ -1,13 +1,26 @@
+"""
+API REST do Fashion Flow Bot (FastAPI).
+Cada cliente identifica sua sessão pelo sessao_id.
+"""
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
 from bot.loader import carregar_dados
 from bot.extractor import extrair_slots
 from bot.classifier import classificar
 from bot.responder import responder
-from bot.contexto import criar_sessao, resetar_sessao, is_despedida, is_casual
+from bot.contexto import (
+    criar_sessao, resetar_sessao,
+    is_despedida, is_casual,
+    merge_com_contexto, atualizar_sessao_pos_turno,
+)
 
-app = FastAPI()
+
+app = FastAPI(title="Fashion Flow Bot")
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,25 +29,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# dados carregados uma vez na inicialização
+# Dados carregados uma vez
 dados = carregar_dados()
 
-# sessões em memória — cada sessao_id tem seu próprio contexto
+# Sessões em memória — cada sessao_id tem seu próprio contexto
 sessoes = {}
+
 
 class MensagemRequest(BaseModel):
     sessao_id: str
     mensagem: str
+
 
 @app.post("/chat")
 def chat(req: MensagemRequest):
     sessao_id = req.sessao_id
     mensagem = req.mensagem.strip()
 
-    # cria sessão se não existir
     if sessao_id not in sessoes:
         sessoes[sessao_id] = criar_sessao()
-
     sessao = sessoes[sessao_id]
 
     if not mensagem:
@@ -42,20 +55,56 @@ def chat(req: MensagemRequest):
 
     if is_despedida(mensagem):
         sessoes[sessao_id] = resetar_sessao(sessao)
-        return {"resposta": "Até logo! Se precisar de mais alguma coisa, estou por aqui."}
+        return {"resposta": "Até logo! Se precisar, é só voltar."}
 
     if is_casual(mensagem) and sessao["ativa"]:
-        return {"resposta": "Pode continuar!"}
+        return {"resposta": "Beleza, pode continuar!"}
 
-    slots = extrair_slots(mensagem, sessao)
-    intencao = classificar(mensagem, slots, dados["intencoes"], sessao)
-    resposta_texto = responder(intencao, slots, dados, sessao, mensagem)
+    em_menu = bool(sessao.get("aguardando_opcao"))
+    slots_turno = extrair_slots(mensagem, em_menu=em_menu)
+    slots_efetivos = merge_com_contexto(slots_turno, sessao)
+    intencao = classificar(mensagem, slots_turno, slots_efetivos, dados["intencoes"], sessao)
+    resposta = responder(intencao, slots_efetivos, dados, sessao, mensagem)
+    atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, resposta)
 
-    sessao["ativa"] = True
-    sessao["ultimo_assunto"] = intencao
+    return {"resposta": resposta, "intencao": intencao}
 
-    return {"resposta": resposta_texto}
+
+@app.get("/sessao/{sessao_id}")
+def get_sessao(sessao_id: str):
+    """Retorna o estado atual de uma sessão (útil pra debug e demo)."""
+    if sessao_id not in sessoes:
+        return {"erro": "sessão não encontrada"}
+    s = sessoes[sessao_id]
+    return {
+        "foco_atual": s["foco_atual"],
+        "ultimo_assunto": s["ultimo_assunto"],
+        "aguardando_opcao": s["aguardando_opcao"],
+        "qtd_turnos": len(s["historico_turnos"]),
+        "historico": s["historico_turnos"],
+    }
+
+
+INDEX_HTML = Path(__file__).parent / "index.html"
+INDEX_ALT_HTML = Path(__file__).parent / "index_alt.html"
+
 
 @app.get("/")
 def root():
+    """Serve o frontend HTML principal (Bernardo, paleta verde)."""
+    if INDEX_HTML.exists():
+        return FileResponse(str(INDEX_HTML))
     return {"status": "Fashion Flow Bot online"}
+
+
+@app.get("/alt")
+def alt():
+    """Frontend alternativo (Vinicius/oreddd, paleta azul)."""
+    if INDEX_ALT_HTML.exists():
+        return FileResponse(str(INDEX_ALT_HTML))
+    return {"erro": "index_alt.html não encontrado"}
+
+
+@app.get("/status")
+def status():
+    return {"status": "Fashion Flow Bot online", "sessoes_ativas": len(sessoes)}

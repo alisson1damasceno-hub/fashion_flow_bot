@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fashion Flow Bot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --blue:      #1a2a4a;
+    --blue-mid:  #1e3354;
+    --blue-lt:   #2a4a7a;
+    --accent:    #4a7fd4;
+    --bg1:       #0a0f1a;
+    --bg2:       #0f1825;
+    --bg3:       #141e30;
+    --surface:   rgba(255,255,255,0.04);
+    --surface2:  rgba(255,255,255,0.07);
+    --border:    rgba(255,255,255,0.08);
+    --text:      #e8edf5;
+    --muted:     #6b7a94;
+    --radius:    16px;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body {
+    background: radial-gradient(ellipse at 60% 0%, #1a2d4a 0%, #0d1520 45%, #080c14 100%);
+    color: var(--text);
+    font-family: var(--font);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .watermark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+  }
+
+  .watermark span {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.04);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  header {
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .logo-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .status-pill {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity:1; } 50% { opacity:0.4; }
+  }
+
+  /* área central com a estrela e o hero — só aparece quando não há mensagens */
+  #hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    position: relative;
+    z-index: 1;
+    padding-bottom: 80px;
+  }
+
+  .star-wrap {
+    width: 80px;
+    height: 80px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .star-bg {
+    width: 80px;
+    height: 80px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+
+  .star-svg {
+    width: 44px;
+    height: 44px;
+    animation: spin 8s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .hero-text {
+    text-align: center;
+  }
+
+  .hero-text h2 {
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .hero-text h2 span {
+    color: var(--accent);
+  }
+
+  .hero-text p {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 340px;
+  }
+
+  .examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 560px;
+    padding: 0 16px;
+  }
+
+  .ex-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: rgba(255,255,255,0.55);
+    font-size: 12px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font);
+  }
+
+  .ex-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(74,127,212,0.08);
+  }
+
+  /* área de mensagens — oculta no início */
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 20px 8px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.08) transparent;
+  }
+
+  #messages.visible {
+    display: flex;
+  }
+
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+  .msg {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 680px;
+    animation: fadeUp 0.2s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(8px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .msg.user {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    max-width: 680px;
+  }
+
+  .msg-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .msg-avatar svg { width: 18px; height: 18px; }
+
+  .msg.user .msg-avatar {
+    background: rgba(74,127,212,0.15);
+    border-color: rgba(74,127,212,0.25);
+  }
+
+  .bubble {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    font-size: 16px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .msg.bot .bubble {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-bottom-left-radius: 4px;
+    flex: 1;
+  }
+
+  .msg.user .bubble {
+    background: rgba(74,127,212,0.18);
+    border: 1px solid rgba(74,127,212,0.28);
+    border-bottom-right-radius: 4px;
+    color: #cddcf5;
+  }
+
+  .typing-dots {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    padding: 4px 2px;
+  }
+
+  .typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing-dots span:nth-child(2) { animation-delay:0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay:0.4s; }
+
+  @keyframes bounce {
+    0%,80%,100% { transform:scale(0.6); opacity:0.4; }
+    40%          { transform:scale(1);   opacity:1; }
+  }
+
+  /* rodapé com o input */
+  footer {
+    padding: 14px 20px 18px;
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+
+  .input-wrap {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    transition: border-color 0.15s;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .input-wrap:focus-within {
+    border-color: rgba(74,127,212,0.5);
+  }
+
+  #input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 13.5px;
+    font-family: var(--font);
+    color: var(--text);
+    resize: none;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+
+  #input::placeholder { color: var(--muted); }
+
+  .input-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .hotkey-badge {
+    font-size: 10px;
+    color: var(--muted);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 3px 8px;
+    border-radius: 8px;
+  }
+
+  kbd {
+    font-family: monospace;
+    color: rgba(255,255,255,0.5);
+  }
+
+  #send {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  #send:hover  { background: #3a6fc4; transform: scale(1.05); }
+  #send:active { transform: scale(0.95); }
+
+  #send svg { width: 16px; height: 16px; fill: white; }
+
+  .disclaimer {
+    text-align: center;
+    font-size: 10.5px;
+    color: rgba(255,255,255,0.18);
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="watermark"><span>Assistente Fashion Flow</span></div>
+
+<header>
+  <div class="logo">
+    <svg class="logo-icon" viewBox="0 0 30 30" fill="none">
+      <rect width="30" height="30" rx="8" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="0.8"/>
+      <path d="M15 5 L16.8 11.2 L23.3 11.2 L18.2 14.9 L20.1 21.1 L15 17.4 L9.9 21.1 L11.8 14.9 L6.7 11.2 L13.2 11.2 Z" fill="white" opacity="0.85"/>
+    </svg>
+    Fashion Flow Bot
+  </div>
+  <div class="status-pill"><span class="dot"></span>Online</div>
+</header>
+
+<!-- hero inicial -->
+<div id="hero">
+  <div class="star-wrap">
+    <div class="star-bg">
+      <svg class="star-svg" viewBox="0 0 44 44" fill="none">
+        <!-- estrela de 5 pontas com pontas arredondadas -->
+        <path d="
+          M22 4
+          C22.5 4 23 4.5 23.2 5.2
+          L25.8 13.4
+          C26 14.1 26.6 14.6 27.3 14.7
+          L35.8 15.9
+          C36.5 16 37 16.6 36.9 17.3
+          C36.85 17.7 36.6 18 36.3 18.3
+          L30 24.3
+          C29.5 24.8 29.3 25.5 29.4 26.2
+          L31.1 34.6
+          C31.25 35.3 30.8 36 30.1 36.15
+          C29.75 36.22 29.4 36.1 29.1 35.9
+          L21.6 31.7
+          C21 31.35 20.25 31.35 19.65 31.7
+          L12.15 35.9
+          C11.5 36.25 10.75 36 10.4 35.35
+          C10.22 35.05 10.2 34.7 10.25 34.4
+          L11.95 26
+          C12.1 25.3 11.85 24.6 11.35 24.1
+          L5.05 18.1
+          C4.55 17.6 4.55 16.8 5.05 16.3
+          C5.3 16.05 5.6 15.9 5.9 15.85
+          L14.4 14.65
+          C15.1 14.55 15.7 14.1 16 13.45
+          L19.7 5.8
+          C20 5.15 20.65 4.7 21.4 4.65
+          Z
+        " fill="white" opacity="0.9"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="hero-text">
+    <h2>Olá! Posso te ajudar<br>com <span>alguma coisa?</span></h2>
+    <p>Assistente de produção da Fashion Flow — tecidos, prazos, personalização e muito mais.</p>
+  </div>
+
+  <div class="examples">
+    <button class="ex-btn" onclick="sendExample(this)">Quais tecidos vocês usam?</button>
+    <button class="ex-btn" onclick="sendExample(this)">Qual o prazo de entrega?</button>
+    <button class="ex-btn" onclick="sendExample(this)">Cuidados com a camisa</button>
+    <button class="ex-btn" onclick="sendExample(this)">Quais são os tamanhos?</button>
+    <button class="ex-btn" onclick="sendExample(this)">Vocês fazem personalização?</button>
+  </div>
+</div>
+
+<!-- mensagens (oculto no início) -->
+<div id="messages"></div>
+
+<footer>
+  <div class="input-wrap">
+    <textarea id="input" rows="1" placeholder="Pergunte qualquer coisa..."></textarea>
+    <div class="input-actions">
+      <span class="hotkey-badge">foco: <kbd>;</kbd></span>
+      <button id="send" onclick="sendMsg()" aria-label="Enviar">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+  <p class="disclaimer">Fashion Flow Bot pode cometer erros. Confirme informações importantes com a equipe.</p>
+</footer>
+
+<script>
+  const API = '/chat';
+  const SESSION = 'ff_' + Math.random().toString(36).slice(2);
+  const heroEl  = document.getElementById('hero');
+  const msgsEl  = document.getElementById('messages');
+  const inputEl = document.getElementById('input');
+  let started   = false;
+
+  inputEl.focus();
+
+  // hotkey ;
+  document.addEventListener('keydown', e => {
+    const tag    = document.activeElement.tagName.toLowerCase();
+    const typing = tag === 'textarea' || tag === 'input' || document.activeElement.isContentEditable;
+    if (!typing && e.key === ';') { e.preventDefault(); inputEl.focus(); }
+  });
+
+  // auto-resize
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  });
+
+  // Enter envia
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  });
+
+  // avatar svg da estrela (pequeno, para as mensagens)
+  const starSVG = `<svg viewBox="0 0 16 16" fill="none"><path d="M8 1.5 L9 4.8 L12.4 4.8 L9.7 6.8 L10.7 10.1 L8 8.1 L5.3 10.1 L6.3 6.8 L3.6 4.8 L7 4.8 Z" fill="white" opacity="0.8"/></svg>`;
+  const userSVG = `<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="3" fill="rgba(74,127,212,0.7)"/><path d="M2 13.5 C2 10.7 4.7 8.5 8 8.5 C11.3 8.5 14 10.7 14 13.5" stroke="rgba(74,127,212,0.7)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>`;
+
+  function showMessages() {
+    if (!started) {
+      started = true;
+      heroEl.style.display = 'none';
+      msgsEl.classList.add('visible');
+    }
+  }
+
+  function addMsg(text, who) {
+    showMessages();
+    const wrap   = document.createElement('div');
+    wrap.className = 'msg ' + who;
+    const av     = document.createElement('div');
+    av.className = 'msg-avatar';
+    av.innerHTML = who === 'bot' ? starSVG : userSVG;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    wrap.appendChild(av);
+    wrap.appendChild(bubble);
+    msgsEl.appendChild(wrap);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    return wrap;
+  }
+
+  function addTyping() {
+    showMessages();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot';
+    wrap.id = 'typing';
+    const av = document.createElement('div');
+    av.className = 'msg-avatar';
+    av.innerHTML = starSVG;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+    wrap.appendChild(av);
+    wrap.appendChild(bubble);
+    msgsEl.appendChild(wrap);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  function sendExample(btn) {
+    inputEl.value = btn.textContent;
+    sendMsg();
+  }
+
+  async function sendMsg() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+    addMsg(text, 'user');
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    inputEl.focus();
+    addTyping();
+    try {
+      const res  = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessao_id: SESSION, mensagem: text })
+      });
+      const data = await res.json();
+      removeTyping();
+      addMsg(data.resposta || 'Erro na resposta.', 'bot');
+    } catch {
+      removeTyping();
+      addMsg('Não consegui me conectar ao servidor. Verifique se o bot está rodando.', 'bot');
+    }
+  }
+</script>
+</body>
+</html>

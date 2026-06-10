@@ -1,3 +1,6 @@
+"""
+Geração da resposta a partir da intenção classificada + slots efetivos + dados.
+"""
 import unicodedata
 
 
@@ -8,17 +11,24 @@ def normalizar(texto):
     return texto
 
 
-def responder(intencao, slots, dados, sessao=None, mensagem=""):
+def pecas(qtd):
+    """Singular/plural correto (MÉDIO 26)."""
+    return "peça" if qtd == 1 else "peças"
 
+
+def responder(intencao, slots, dados, sessao=None, mensagem=""):
     """
-    Recebe a intenção classificada, os slots extraídos e todos os dados.
     Retorna a resposta em texto para o usuário.
+    `slots` aqui são os slots EFETIVOS (foco_atual + slots_turno mesclados).
     """
-# ── Seleção de menu ─────────────────────────────────────────
+
+    # ── Seleção de menu ──────────────────────────────────────────
     if intencao == "selecao_opcao":
         from rapidfuzz import fuzz
 
         opcao_menu = sessao.get("aguardando_opcao") if sessao else None
+        # Mapa completo de menus, mesclando nosso (tecido/produto) com a versão
+        # expandida da equipe (qualidade, personalização, sustentabilidade etc).
         opcoes_por_menu = {
             "menu_tecido": {
                 "algodao basico": "algodao_basico", "algodao penteado": "algodao_penteado",
@@ -26,10 +36,6 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 "suplex": "suplex", "moletom flanelado": "moletom_flanelado",
                 "moletom peluciado": "moletom_peluciado", "malha mista": "malha_mista",
                 "linho": "linho", "jeans": "jeans", "alfaiataria": "alfaiataria",
-            },
-            "menu_personalizacao": {
-                "silkscreen": "silkscreen", "dtf": "dtf",
-                "bordado": "bordado", "etiqueta": "etiqueta", "nenhuma": "nenhuma",
             },
             "menu_produto": {
                 "camiseta basica": "camiseta_basica", "camiseta premium": "camiseta_premium",
@@ -41,23 +47,138 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             },
             "menu_qualidade": {
                 "originalidade das pecas": "qualidade_originalidade",
-                "durabilidade": "qualidade_durabilidade",
-                "controle de qualidade": "qualidade_controle",
-                "defeitos de fabricacao": "qualidade_defeito",
-                "certificacoes": "qualidade_certificacoes",
+                "durabilidade":            "qualidade_durabilidade",
+                "controle de qualidade":   "qualidade_controle",
+                "defeitos de fabricacao":  "qualidade_defeito",
+                "certificacoes":           "qualidade_certificacoes",
+            },
+            "menu_personalizacao": {
+                "tipos de personalizacao":  "personalizacao_tipos",
+                "cores disponiveis":        "personalizacao_cores",
+                "tamanhos disponiveis":     "personalizacao_tamanhos",
+                "quantidade minima":        "personalizacao_quantidade",
+                "prazo de personalizacao":  "personalizacao_prazo",
+                "envio de arte":            "personalizacao_envio_arte",
+            },
+            "menu_personalizacao_tipos": {
+                "estampa silkscreen":     "personalizacao_silkscreen",
+                "estampa dtf digital":    "personalizacao_dtf",
+                "bordado":                "personalizacao_bordado",
+                "etiqueta personalizada": "personalizacao_etiqueta",
+                "modelagem exclusiva":    "personalizacao_modelagem_exclusiva",
+            },
+            "menu_personalizacao_cores": {
+                "cores basicas em estoque":    "cores_basicas",
+                "tingimento sob demanda":      "cores_sob_demanda",
+                "combinacao cor peca estampa": "cores_combinacao",
+                "limite de cores por tecnica": "cores_limite_tecnica",
+            },
+            "menu_personalizacao_tamanhos": {
+                "grade adulto":      "tamanhos_adulto",
+                "grade infantil":    "tamanhos_infantil",
+                "plus size":         "tamanhos_plus_size",
+                "tabela de medidas": "tamanhos_tabela_medidas",
+            },
+            "menu_personalizacao_quantidade": {
+                "minimo por tipo de personalizacao": "qtd_minima_personalizacao",
+                "minimo por cor":                    "qtd_minima_cor",
+                "pedidos grandes 500":               "qtd_grande_volume",
+                "pedidos pequenos ate 30":           "qtd_pequena_volume",
+            },
+            "menu_sustentabilidade": {
+                "aproveitamento de tecido": "sustent_aproveitamento",
+                "materiais sustentaveis":   "sustent_materiais_eco",
+                "reciclagem de sobras":     "sustent_reciclagem",
+                "tinturas e quimicos":      "sustent_quimicos",
+                "praticas trabalhistas":    "sustent_trabalho",
+                "logistica sustentavel":    "sustent_logistica",
+            },
+            "menu_manutencao": {
+                "como lavar":         "manut_lavar",
+                "ferro de passar":    "manut_ferro",
+                "secadora":           "manut_secadora",
+                "alvejante":          "manut_alvejante",
+                "tirar mancha":       "manut_mancha",
+                "cuidados por tecido":"manut_por_tecido",
+                "encolhimento":       "manut_encolhimento",
+                "desbotamento":       "manut_desbotamento",
+            },
+            "menu_manut_por_tecido": {
+                "algodao":   "cuidados_algodao",
+                "viscose":   "cuidados_viscose",
+                "poliester": "cuidados_poliester",
+                "linho":     "cuidados_linho",
+                "jeans":     "cuidados_jeans",
+                "la":        "cuidados_la",
+                "malha":     "cuidados_malha",
+                "moletom":   "cuidados_moletom",
+            },
+            "menu_producao": {
+                "etapas do processo":   "producao_etapas",
+                "onde e produzido":     "producao_onde",
+                "capacidade produtiva": "producao_capacidade",
+                "tecnologia":           "producao_tecnologia",
+                "equipe":               "producao_equipe",
+                "modelagem":            "producao_modelagem",
+                "corte e costura":      "producao_corte_costura",
+            },
+            "menu_catalogo": {
+                "camisetas e basicas":    "cat_camisetas",
+                "moletons e jaquetas":    "cat_moletons",
+                "calcas e shorts":        "cat_calcas",
+                "vestidos":               "cat_vestidos",
+                "uniformes corporativos": "cat_uniformes",
+                "linha infantil":         "cat_infantil",
+            },
+            "menu_sugestao_produto": {
+                "casual dia a dia":       "sug_casual",
+                "trabalho corporativo":   "sug_trabalho",
+                "esporte academia":       "sug_esporte",
+                "festa ocasiao especial": "sug_festa",
+                "inverno":                "sug_inverno",
+                "verao":                  "sug_verao",
+                "uniforme empresa":       "sug_uniforme",
+                "presente":               "sug_presente",
+            },
+            "menu_tecidos": {
+                "lista de tecidos disponiveis": "tec_disponiveis",
+                "composicao de cada peca":      "tec_composicao",
+                "origem dos tecidos":           "tec_origem",
+                "sugestao por uso":             "sug_tecido_uso",
+                "tecido para pele sensivel":    "tec_pele_sensivel",
+                "nao trabalhamos com":          "tec_couro",
+            },
+            "menu_sug_tecido_uso": {
+                "clima quente":   "sug_tec_quente",
+                "clima frio":     "sug_tec_frio",
+                "uso diario":     "sug_tec_diario",
+                "esporte":        "sug_tec_esporte",
+                "ocasiao formal": "sug_tec_formal",
+            },
+            "menu_previsao_prazo": {
+                "prazo padrao":       "prazo_padrao",
+                "com personalizacao": "prazo_com_personalizacao",
+                "pedido urgente":     "prazo_urgente",
+                "pedido grande 500":  "prazo_grande_pedido",
+                "atraso de pedido":   "prazo_atraso",
+            },
+            "menu_etapas_pedido": {
+                "em que etapa esta":        "etapa_consulta",
+                "alterar pedido":           "alterar_pedido",
+                "cancelar pedido":          "cancelar_pedido",
+                "acompanhamento detalhado": "acompanhamento",
             },
         }
-
         opcoes = opcoes_por_menu.get(opcao_menu, {})
 
-        # usuário digitou um número (ex: "2")
+        # usuário digitou um número
         try:
             numero = int(mensagem.strip())
             lista = list(opcoes.values())
             if 1 <= numero <= len(lista):
                 escolha = lista[numero - 1]
                 if sessao:
-                    sessao["slots_acumulados"][opcao_menu.replace("menu_", "")] = escolha
+                    # MÉDIO 15: não persiste no foco_atual; só limpa o menu.
                     sessao["aguardando_opcao"] = None
                 df_int = dados["intencoes"]
                 row_sub = df_int[df_int["id_intencao"] == escolha]
@@ -67,7 +188,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         except (ValueError, TypeError):
             pass
 
-        # usuário digitou o nome (ex: "bordado")
+        # usuário digitou o nome
         melhor_score = 0
         melhor_valor = None
         msg_norm = normalizar(mensagem)
@@ -79,9 +200,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
 
         if melhor_score >= 75:
             if sessao:
-                sessao["slots_acumulados"][opcao_menu.replace("menu_", "")] = melhor_valor
                 sessao["aguardando_opcao"] = None
-            # busca resposta direta no CSV para menus de subtópico
             df_int = dados["intencoes"]
             row_sub = df_int[df_int["id_intencao"] == melhor_valor]
             if not row_sub.empty:
@@ -92,32 +211,79 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         lista_opcoes = "\n".join(f"  {i+1}. {c.title()}" for i, c in enumerate(opcoes.keys()))
         return f"Não entendi sua escolha. Por favor, selecione uma opção:\n{lista_opcoes}"
 
+    # ── Prazo sem contexto (cenário 12) ──────────────────────────
+    if intencao == "prazo_sem_contexto":
+        prazo = slots.get("prazo_desejado", 0)
+        return (
+            f"Vi que você mencionou {prazo} dias — pra eu dizer se conseguimos, preciso saber: "
+            "qual produto, qual quantidade e se tem personalização (silk, bordado, DTF)?"
+        )
+
+    # ── Cancelar pedido (CRÍTICO 6) ──────────────────────────────
+    if intencao == "cancelar_pedido":
+        numero = slots.get("numero_pedido")
+        df = dados["pedidos"]
+        etapas_abertas = df[df["pode_alterar"] == "sim"]["etapa"].tolist()
+        etapas_fechadas = df[df["pode_alterar"] == "nao"]["etapa"].tolist()
+        if numero:
+            return (
+                f"Para cancelar o pedido {numero}, fale com o setor de vendas o mais rápido possível. "
+                f"Cancelamento é viável enquanto o pedido está em: {', '.join(etapas_abertas)}. "
+                f"Depois disso ({', '.join(etapas_fechadas)}), só negociação caso a caso — pode haver "
+                "custo de material já consumido."
+            )
+        return (
+            "Para cancelar um pedido, informe o número (formato FF-AAAA-NNNN) e fale com vendas. "
+            f"Cancelamento é livre na etapa de {etapas_abertas[0] if etapas_abertas else 'modelagem'}; "
+            "a partir do corte, há custo de tecido já cortado."
+        )
+
+    # ── Disponibilidade de materiais / estoque (CRÍTICO 5) ──────
+    if intencao == "disponibilidade_materiais":
+        tecido = slots.get("tecido")
+        df = dados["estoque_materiais"]
+        if tecido:
+            row = df[df["tecido"] == tecido]
+            if not row.empty:
+                r = row.iloc[0]
+                if r["status"] == "disponivel":
+                    return (
+                        f"Sim, temos {tecido.replace('_', ' ')} em estoque: "
+                        f"{r['metros_disponivel']}m disponíveis. {r['observacao']}."
+                    )
+                else:
+                    return (
+                        f"No momento {tecido.replace('_', ' ')} está sem estoque. "
+                        f"Previsão de reposição: {r['previsao_reposicao']}. {r['observacao']}."
+                    )
+        # sem tecido específico — visão geral
+        disponiveis = df[df["status"] == "disponivel"]["tecido"].tolist()
+        indispon = df[df["status"] == "indisponivel"]["tecido"].tolist()
+        return (
+            "Visão geral de estoque: "
+            f"disponíveis ({len(disponiveis)}) — {', '.join(t.replace('_',' ') for t in disponiveis[:6])}"
+            + (f"... + {len(disponiveis)-6} outros." if len(disponiveis) > 6 else ".")
+            + (f" Indisponíveis: {', '.join(t.replace('_',' ') for t in indispon)}." if indispon else "")
+        )
 
     # ── Status do pedido ─────────────────────────────────────────
     if intencao == "status_pedido":
         numero = slots.get("numero_pedido")
+        df = dados["pedidos"]
+        # MÉDIO 29: usa lookup_pedidos pra dar info útil sobre etapas
+        etapas = df["etapa"].tolist()
         if numero:
             return (
-                f"Para consultar o status do pedido {numero}, "
-                "entre em contato com o setor de logística informando esse número. "
-                "Eles têm acesso em tempo real a todas as etapas da produção."
+                f"O pedido {numero} precisa ser consultado pelo setor de logística "
+                "em tempo real (eles têm acesso direto à esteira de produção). "
+                f"Para sua referência, um pedido passa pelas etapas: {' → '.join(etapas)}. "
+                "Alterações só são possíveis na primeira; depois do corte, qualquer mudança "
+                "gera retrabalho."
             )
-        df = dados["pedidos"]
-        etapa = slots.get("etapa_mencionada")
-        if etapa:
-            row = df[normalizar(df["etapa"]) == normalizar(etapa)]
-            if not row.empty:
-                r = row.iloc[0]
-                pode = "ainda é possível fazer alterações" if r["pode_alterar"] == "sim" else "não é mais possível fazer alterações"
-                return (
-                    f"Na etapa de {r['etapa']}: {r['descricao']} "
-                    f"Nesse momento, {pode}. {r['observacao']}"
-                )
         return (
-            "Para verificar em qual etapa está seu pedido, entre em contato "
-            "com o setor de logística informando o número do pedido (formato FF-AAAA-NNNN). "
-            "As etapas do nosso processo são: modelagem → corte → costura → "
-            "personalização → qualidade → embalagem e expedição."
+            "Para verificar a etapa de um pedido, informe o número no formato FF-AAAA-NNNN e fale "
+            "com a logística. "
+            f"As etapas do processo são: {' → '.join(etapas)}."
         )
 
     # ── Alterar pedido ───────────────────────────────────────────
@@ -129,16 +295,14 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if numero:
             return (
                 f"Para verificar se o pedido {numero} ainda pode ser alterado, "
-                "entre em contato com o setor de vendas o quanto antes. "
-                f"Alterações só são possíveis na etapa de: {', '.join(etapas_abertas)}. "
-                f"Se já estiver em: {', '.join(etapas_fechadas)}, não será mais viável."
+                "fale com vendas o quanto antes. "
+                f"Alterações possíveis na etapa de: {', '.join(etapas_abertas)}. "
+                f"Se já estiver em: {', '.join(etapas_fechadas)}, não será viável."
             )
         return (
-            f"Alterações em pedidos só são possíveis enquanto está na etapa de: "
-            f"{', '.join(etapas_abertas)}. "
-            f"A partir de {etapas_fechadas[0]}, nenhuma alteração é viável sem gerar "
-            "retrabalho e custo adicional. "
-            "Informe o número do pedido ao setor de vendas para verificar."
+            f"Alterações em pedidos só rolam enquanto está em: {', '.join(etapas_abertas)}. "
+            f"A partir de {etapas_fechadas[0]}, a alteração gera retrabalho e custo. "
+            "Informe o número do pedido (FF-AAAA-NNNN) ao setor de vendas."
         )
 
     # ── Viabilidade de produção ──────────────────────────────────
@@ -146,6 +310,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         quantidade = slots.get("quantidade", 0)
         tecido = slots.get("tecido")
         prazo = slots.get("prazo_desejado")
+        urgente = slots.get("urgente", False)
 
         df_cap = dados["capacidade_produtiva"]
         df_est = dados["estoque_materiais"]
@@ -154,8 +319,8 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         cap_disponivel = int(costura["disponivel_hoje_pecas"])
         viavel_capacidade = quantidade <= cap_disponivel
 
-        material_ok = True
         material_msg = ""
+        material_ok = True
         if tecido:
             row_mat = df_est[df_est["tecido"] == tecido]
             if not row_mat.empty:
@@ -163,8 +328,8 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 material_ok = r["status"] == "disponivel"
                 if not material_ok:
                     material_msg = (
-                        f" Porém, {tecido.replace('_', ' ')} está sem estoque no momento"
-                        f" — reposição prevista para {r['previsao_reposicao']}."
+                        f" Porém, {tecido.replace('_', ' ')} está sem estoque "
+                        f"(reposição em {r['previsao_reposicao']})."
                     )
                 else:
                     material_msg = (
@@ -172,19 +337,23 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                         f"({r['metros_disponivel']}m em estoque)."
                     )
 
+        aviso_urgencia = ""
+        if urgente:
+            aviso_urgencia = " Notei que é urgente — taxa de urgência aplicada é de 20% a 40%."
+
         if prazo and prazo < 15:
             return (
-                f"Para {quantidade} peças em {prazo} dias: nosso prazo mínimo de produção "
-                "é de 15 dias úteis para pedidos sem personalização. "
-                f"A capacidade atual do setor de costura comporta {cap_disponivel} peças/dia.{material_msg} "
-                "Para prazos urgentes, entre em contato com vendas — aplicamos taxa de urgência de 20% a 40%."
+                f"Para {quantidade} {pecas(quantidade)} em {prazo} dias: nosso prazo mínimo é de "
+                "15 dias úteis (sem personalização). "
+                f"A capacidade do setor de costura é de {cap_disponivel} peças/dia.{material_msg}{aviso_urgencia} "
+                "Para esse prazo, vendas avalia taxa de urgência."
             )
 
         if viavel_capacidade and material_ok:
             return (
-                f"Sim, temos capacidade técnica para produzir {quantidade} peças. "
-                f"O setor de costura tem {cap_disponivel} peças disponíveis hoje.{material_msg} "
-                "Para confirmar e iniciar o pedido, entre em contato com o setor de vendas."
+                f"Sim, temos capacidade técnica para produzir {quantidade} {pecas(quantidade)}. "
+                f"O setor de costura tem {cap_disponivel} peças disponíveis hoje.{material_msg}{aviso_urgencia} "
+                "Para confirmar, fale com vendas."
             )
         else:
             motivos = []
@@ -196,9 +365,9 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             if not material_ok:
                 motivos.append(material_msg.strip())
             return (
-                f"Pode haver dificuldades para produzir {quantidade} peças agora: "
-                f"{'; '.join(motivos)}. "
-                "Entre em contato com vendas para avaliar alternativas."
+                f"Pode haver dificuldades para produzir {quantidade} {pecas(quantidade)} agora: "
+                f"{'; '.join(motivos)}.{aviso_urgencia} "
+                "Fale com vendas para avaliar alternativas."
             )
 
     # ── Consumo de tecido ────────────────────────────────────────
@@ -217,8 +386,8 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
 
         if filtro.empty:
             return (
-                f"Não tenho dados de consumo de tecido para {produto or 'esse produto'}. "
-                "Entre em contato com o setor técnico para uma análise precisa."
+                f"Não tenho dados de consumo para {produto or 'esse produto'}. "
+                "Fale com o setor técnico."
             )
 
         metros_por_peca = float(filtro.iloc[0]["metros_por_peca"])
@@ -229,27 +398,21 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             if metragem >= metros_necessarios:
                 sobra = round(metragem - metros_necessarios, 2)
                 return (
-                    f"Para {quantidade} peças de {produto.replace('_', ' ')}, "
-                    f"são necessários {metros_necessarios}m de tecido "
-                    f"({metros_por_peca}m por peça). "
-                    f"Com {metragem}m você tem o suficiente — sobram {sobra}m. "
-                    f"Obs: {obs}"
+                    f"Para {quantidade} {pecas(quantidade)} de {produto.replace('_',' ')}, "
+                    f"precisa de {metros_necessarios}m ({metros_por_peca}m por peça). "
+                    f"Com {metragem}m você tem o suficiente — sobram {sobra}m. Obs: {obs}"
                 )
             else:
                 falta = round(metros_necessarios - metragem, 2)
                 return (
-                    f"Para {quantidade} peças de {produto.replace('_', ' ')}, "
-                    f"são necessários {metros_necessarios}m de tecido "
-                    f"({metros_por_peca}m por peça). "
-                    f"Com apenas {metragem}m não é suficiente — faltam {falta}m. "
-                    f"Obs: {obs}"
+                    f"Para {quantidade} {pecas(quantidade)} de {produto.replace('_',' ')}, "
+                    f"precisa de {metros_necessarios}m ({metros_por_peca}m por peça). "
+                    f"Com apenas {metragem}m, faltam {falta}m. Obs: {obs}"
                 )
 
         return (
-            f"Para {quantidade} peças de {produto.replace('_', ' ')}, "
-            f"são necessários aproximadamente {metros_necessarios}m de tecido "
-            f"({metros_por_peca}m por peça). "
-            f"Obs: {obs}"
+            f"Para {quantidade} {pecas(quantidade)} de {produto.replace('_',' ')}, "
+            f"precisa de aproximadamente {metros_necessarios}m ({metros_por_peca}m por peça). Obs: {obs}"
         )
 
     # ── Prazo ────────────────────────────────────────────────────
@@ -257,6 +420,15 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         quantidade = slots.get("quantidade", 0)
         produto = slots.get("produto")
         personalizacao = slots.get("personalizacao", "nenhuma")
+        urgente = slots.get("urgente", False)
+        prazo_desejado = slots.get("prazo_desejado")
+        # ALTO 30: produto inexistente vira esclarecimento
+        if not produto:
+            return (
+                "Pra calcular prazo eu preciso saber qual produto você quer. "
+                "Trabalhamos com camisetas, polos, moletons, vestidos, calças, uniformes e mais. "
+                "Qual deles?"
+            )
 
         df = dados["prazo"]
         filtro = df[
@@ -272,15 +444,34 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 (df["qtd_max"] >= quantidade)
             ]
         if filtro.empty:
+            # MÉDIO 31: mensagem específica pra quantidades muito altas
+            qtd_max = df[df["produto"] == produto]["qtd_max"].max() if not df[df["produto"] == produto].empty else 0
+            if quantidade > qtd_max:
+                return (
+                    f"{quantidade} peças é um pedido grande — acima da nossa tabela padrão "
+                    f"(máximo tabelado: {qtd_max}). Pra esse volume é orçamento especial com vendas, "
+                    "geralmente em fases (lotes de 100-200 peças) e prazo planejado."
+                )
             return (
-                f"Não encontrei dados de prazo para {produto} com quantidade {quantidade}. "
-                "Entre em contato com o setor de vendas para uma estimativa personalizada."
+                f"Não encontrei dados de prazo para {produto.replace('_',' ')} com quantidade {quantidade}. "
+                "Fale com vendas pra estimativa personalizada."
             )
         r = filtro.iloc[0]
         pers_txt = f" com {personalizacao}" if personalizacao != "nenhuma" else ""
+        prazo_min = int(r['prazo_min_dias'])
+        prazo_max = int(r['prazo_max_dias'])
+
+        aviso = ""
+        # MÉDIO 17 + urgência: usa o slot urgente que estava sendo ignorado
+        if urgente or (prazo_desejado and prazo_desejado < prazo_min):
+            aviso = (
+                f" Pelo prazo desejado ({prazo_desejado} dias) ser mais curto que o normal, "
+                if prazo_desejado and prazo_desejado < prazo_min else " Notei que é urgente — "
+            ) + "aplicamos taxa de urgência de 20% a 40%. Fale com vendas pra avaliar."
+
         return (
-            f"Para {quantidade} peças de {produto.replace('_', ' ')}{pers_txt}: "
-            f"prazo estimado de {r['prazo_min_dias']} a {r['prazo_max_dias']} dias úteis. "
+            f"Para {quantidade} {pecas(quantidade)} de {produto.replace('_',' ')}{pers_txt}: "
+            f"prazo estimado de {prazo_min} a {prazo_max} dias úteis.{aviso} "
             "Prazo confirmado pelo setor de vendas no fechamento do pedido."
         )
 
@@ -289,6 +480,12 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         quantidade = slots.get("quantidade", 0)
         produto = slots.get("produto")
         personalizacao = slots.get("personalizacao", "nenhuma")
+        if not produto:
+            return (
+                "Pra calcular preço eu preciso saber qual produto você quer. "
+                "Trabalhamos com camisetas, polos, moletons, vestidos, calças, uniformes e mais. "
+                "Qual deles?"
+            )
 
         df = dados["preco"]
         filtro = df[
@@ -304,19 +501,26 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 (df["qtd_max"] >= quantidade)
             ]
         if filtro.empty:
+            qtd_max = df[df["produto"] == produto]["qtd_max"].max() if not df[df["produto"] == produto].empty else 0
+            if quantidade > qtd_max:
+                return (
+                    f"{quantidade} peças é um volume bem grande — fora da nossa tabela "
+                    f"(máximo: {qtd_max}). Pra esse pedido vale orçamento especial com vendas, "
+                    "tem desconto progressivo a partir de 500 peças."
+                )
             return (
-                f"Não encontrei dados de preço para {produto} com quantidade {quantidade}. "
-                "Entre em contato com o setor de vendas para um orçamento personalizado."
+                f"Não encontrei dados de preço para {produto.replace('_',' ')} com quantidade {quantidade}. "
+                "Fale com vendas pra orçamento personalizado."
             )
         r = filtro.iloc[0]
         total = round(float(r["preco_unitario_estimado"]) * quantidade, 2)
         pers_txt = f" com {personalizacao}" if personalizacao != "nenhuma" else ""
         return (
-            f"Para {quantidade} peças de {produto.replace('_', ' ')}{pers_txt}: "
+            f"Para {quantidade} {pecas(quantidade)} de {produto.replace('_',' ')}{pers_txt}: "
             f"valor unitário estimado de R$ {r['preco_unitario_estimado']} "
             f"({r['desconto_aplicado']} de desconto). "
             f"Total estimado: R$ {total:.2f}. "
-            "Valor indicativo — fechamento com o setor de vendas."
+            "Valor indicativo — fechamento com vendas."
         )
 
     # ── Compatibilidade tecido × personalização ──────────────────
@@ -329,7 +533,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             return f"Não tenho dados sobre {personalizacao} em {tecido}. Consulte o setor técnico."
         r = filtro.iloc[0]
         return (
-            f"{personalizacao.title()} em {tecido.replace('_', ' ')}: {r['compativel'].upper()}. "
+            f"{personalizacao.title()} em {tecido.replace('_',' ')}: {r['compativel'].upper()}. "
             f"{r['observacao']}"
         )
 
@@ -343,7 +547,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             return f"Não tenho dados sobre {tecido} em {produto}. Consulte o setor técnico."
         r = filtro.iloc[0]
         return (
-            f"{tecido.replace('_', ' ').title()} em {produto.replace('_', ' ')}: "
+            f"{tecido.replace('_',' ').title()} em {produto.replace('_',' ')}: "
             f"{r['compativel'].upper()}. {r['observacao']}"
         )
 
@@ -356,9 +560,9 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if filtro.empty:
             return f"Não tenho dados sobre a cor {cor} em {tecido}. Consulte o setor de vendas."
         r = filtro.iloc[0]
-        disp = "em estoque permanente" if r["disponibilidade"] == "estoque" else "sob demanda (mínimo 80 peças + 7 a 10 dias adicionais)"
+        disp = "em estoque permanente" if r["disponibilidade"] == "estoque" else "sob demanda (mínimo 80 peças + 7 a 10 dias)"
         return (
-            f"{cor.replace('_', ' ').title()} em {tecido.replace('_', ' ')}: {disp}. "
+            f"{cor.replace('_',' ').title()} em {tecido.replace('_',' ')}: {disp}. "
             f"{r['observacao']}"
         )
 
@@ -376,7 +580,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             return f"Não tenho dados de gramatura para {produto}. Consulte o setor técnico."
         r = filtro.iloc[0]
         return (
-            f"Gramatura recomendada para {produto.replace('_', ' ')} "
+            f"Gramatura recomendada para {produto.replace('_',' ')} "
             f"({r['uso']}): {r['gramatura_min_g_m2']} a {r['gramatura_max_g_m2']} g/m². "
             f"{r['observacao']}"
         )
@@ -392,11 +596,11 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         r = filtro.iloc[0]
         disp = "disponível" if r["disponivel"] == "sim" else "não disponível"
         return (
-            f"Grade {grade.replace('_', ' ')} para {produto.replace('_', ' ')}: {disp}. "
+            f"Grade {grade.replace('_',' ')} para {produto.replace('_',' ')}: {disp}. "
             f"{r['observacao']}"
         )
 
-    # ── Resposta padrão do CSV ───────────────────────────────────
+    # ── Resposta padrão do CSV (menus etc) ───────────────────────
     df_int = dados["intencoes"]
     row = df_int[df_int["id_intencao"] == intencao]
     if not row.empty:
@@ -411,11 +615,10 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 return f"{resposta}\n{lista}"
             return f"{resposta}\n{followup}"
         return resposta
-    
+
     # ── Fallback ─────────────────────────────────────────────────
     return (
         "Não entendi bem sua pergunta. Posso ajudar com: "
         "prazos, preços, tecidos, personalização, compatibilidade, "
-        "gramatura, tamanhos e status de pedidos. "
-        "Pode reformular?"
+        "gramatura, tamanhos e status de pedidos. Pode reformular?"
     )
