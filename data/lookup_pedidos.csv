@@ -1,0 +1,7 @@
+"etapa","pode_alterar","descricao","observacao"
+"modelagem","sim","Pedido confirmado e em desenvolvimento da ficha técnica e moldes","Alterações de produto, tamanho, cor e quantidade ainda são possíveis. Entre em contato com o setor de vendas."
+"corte","nao","Tecido já está sendo cortado conforme os moldes aprovados","Alterações não são mais viáveis. Qualquer mudança geraria retrabalho e custo adicional."
+"costura","nao","Peças cortadas estão sendo montadas pelas costureiras","Nenhuma alteração possível nesta etapa."
+"personalizacao","nao","Peças prontas estão recebendo bordado, silk ou DTF","Personalização já aplicada ou em andamento — sem retorno possível."
+"qualidade","nao","Inspeção final dimensional e visual em andamento","Pedido praticamente concluído — expedição em breve."
+"embalagem_expedicao","nao","Peças aprovadas sendo embaladas e preparadas para envio","Pedido encerrado internamente — aguardando retirada ou envio."
