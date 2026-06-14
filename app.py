@@ -13,6 +13,7 @@ from bot.loader import carregar_dados
 from bot.extractor import extrair_slots
 from bot.classifier import classificar
 from bot.responder import responder
+from bot.seguranca import verificar_seguranca
 from bot.contexto import (
     criar_sessao, resetar_sessao,
     is_despedida, is_casual,
@@ -52,6 +53,11 @@ def chat(req: MensagemRequest):
 
     if not mensagem:
         return {"resposta": ""}
+    
+    # Filtro de Segurança: bloqueia dados sensíveis antes de tudo
+    bloqueio = verificar_seguranca(mensagem)
+    if bloqueio:
+        return {"resposta": bloqueio, "intencao": "bloqueio_seguranca"}
 
     if is_despedida(mensagem):
         sessoes[sessao_id] = resetar_sessao(sessao)

@@ -6,6 +6,7 @@ from bot.loader import carregar_dados
 from bot.extractor import extrair_slots
 from bot.classifier import classificar
 from bot.responder import responder
+from bot.seguranca import verificar_seguranca
 from bot.contexto import (
     criar_sessao, resetar_sessao,
     is_despedida, is_casual,
@@ -37,6 +38,13 @@ def main():
 
         if not mensagem:
             continue
+
+        # Filtro de Segurança: bloqueia dados sensíveis antes de tudo
+        bloqueio = verificar_seguranca(mensagem)
+        if bloqueio:
+            print(f"Bot: {bloqueio}\n")
+            continue
+
 
         if mensagem.lower() in ("sair", "exit", "quit"):
             print("Bot: Até logo! Qualquer dúvida é só chamar.")
