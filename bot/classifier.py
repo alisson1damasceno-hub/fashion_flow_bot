@@ -31,6 +31,17 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if sessao and sessao.get("aguardando_opcao"):
         return "selecao_opcao"
 
+    # ── 0b. Fluxos de CRUD de pedido em andamento ────────────────
+    if sessao:
+        # Registro de pedido (CREATE) em andamento → continua coletando os campos.
+        if sessao.get("registro_pedido") is not None:
+            return "registrar_pedido"
+        # Pedimos um ID antes e ele chegou agora → executa a ação que ficou pendente
+        # (consultar / cancelar / alterar). Guardada em sessao["aguardando_id"].
+        acao_pendente = sessao.get("aguardando_id")
+        if acao_pendente and slots_turno.get("numero_pedido"):
+            return acao_pendente
+
     # ── 1. Regras por VERBO (alta prioridade — vencem regras por slot) ──
     # CRÍTICO 6: "cancelar" vem antes de "numero_pedido vira status"
     if re.search(r'\bcancelar\b|\bcancelamento\b', t):
@@ -41,12 +52,32 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     ):
         return "alterar_pedido_especifico"
 
+    # CREATE: iniciar o registro de um pedido novo
+    # ("quero fazer um pedido", "registrar pedido", "novo pedido"...)
+    if re.search(r'\b(registrar|cadastrar|abrir|criar)\b.*\bpedido\b', t) or \
+       re.search(r'\b(fazer|faz)\b.*\bpedido\b', t) or \
+       re.search(r'\bnovo pedido\b', t):
+        return "registrar_pedido"
+
+    # UPDATE (operação-assinatura da Produção, Semana 3): avançar a etapa de
+    # fabricação. Precisa vir ANTES da regra de status ("etapa do pedido").
+    if re.search(r'avancar (a )?etapa|avancar (o |esse |este )?pedido|'
+                 r'avancar (a )?producao|proxima etapa|passar (pra|para) (a )?proxima|'
+                 r'concluir (a )?etapa|avancei (a )?etapa', t):
+        return "avancar_etapa"
+
     # CRÍTICO 5: estoque vence pedido herdado
     if re.search(r'\bestoque\b|\bem estoque\b|\btem (algodao|dry.?fit|malha|jeans|viscose|linho|moletom|suplex|tecido|tencel|alfaiataria|la|rpet)\b', t):
         return "disponibilidade_materiais"
 
-    if re.search(r'saiu do corte|foi para a costura|esta no corte|esta na costura|'
-                 r'meu lote|andamento do pedido|etapa do pedido', t):
+    # READ: consultar/acompanhar o andamento de um pedido (pede o ID depois).
+    # Precisa vir aqui em cima pra "status do pedido" não cair no menu genérico
+    # etapas_pedido (que casa pela mesma palavra-chave lá embaixo).
+    if re.search(r'status d[oae]s? (meu )?pedido|consultar (o )?(meu )?pedido|'
+                 r'acompanhar (o )?(meu )?pedido|onde esta (o )?meu pedido|'
+                 r'andamento d[oae] (meu )?pedido|fase d[oae] (meu )?pedido|'
+                 r'etapa d[oae] (meu )?pedido|saiu do corte|foi para a costura|'
+                 r'esta no corte|esta na costura|meu lote', t):
         return "status_pedido"
 
     # ── 2. Regras por slot DO TURNO ATUAL ─────────────────────────
