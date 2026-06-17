@@ -19,7 +19,7 @@ def carregar_dados():
         "cor_tecido":                   "lookup_cor_tecido.csv",
         "tamanho_produto":              "lookup_tamanho_produto.csv",
         "gramatura":                    "lookup_gramatura.csv",
-        "pedidos":                      "lookup_pedidos.csv",
+        "etapas":                       "lookup_etapas.csv",
         "capacidade_produtiva":         "lookup_capacidade_produtiva.csv",
         "consumo_tecido":               "lookup_consumo_tecido.csv",
         "estoque_materiais":            "lookup_estoque_materiais.csv",

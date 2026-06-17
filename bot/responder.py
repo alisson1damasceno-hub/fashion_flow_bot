@@ -1,7 +1,11 @@
 """
 Geração da resposta a partir da intenção classificada + slots efetivos + dados.
 """
+import re
 import unicodedata
+
+# CRUD de pedidos — cada operação mora no seu próprio arquivo em bot/pedidos/.
+from bot.pedidos import criar, consultar, atualizar, cancelar
 
 
 def normalizar(texto):
@@ -16,11 +20,121 @@ def pecas(qtd):
     return "peça" if qtd == 1 else "peças"
 
 
+# ─────────────────────────── CRUD: coleta na conversa ───────────────────────────
+# A lógica de CADA operação está em bot/pedidos/. O que fica aqui é só a parte de
+# CONVERSA: perguntar os campos do registro um a um e descobrir o que alterar.
+
+# Campos que precisamos coletar para registrar um pedido (na ordem das perguntas).
+CAMPOS_REGISTRO = ["produto", "quantidade", "cor", "tamanho", "tecido", "personalizacao"]
+
+PERGUNTAS_REGISTRO = {
+    "produto": "Qual produto você quer produzir? (ex: camiseta, polo, moletom, vestido...)",
+    "quantidade": "Quantas peças?",
+    "cor": "Qual cor? (ex: preto, branco, marinho, vermelho...)",
+    "tamanho": "Qual tamanho ou grade? (ex: M, G, infantil, plus size...)",
+    "tecido": "Qual tecido? (ex: algodão, algodão pima, moletom flanelado, viscose...)",
+    "personalizacao": "Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')",
+}
+
+# Palavras que abortam o registro no meio do caminho.
+ABORTAR_REGISTRO = {"cancelar", "parar", "sair", "deixa pra la", "esquece", "esquecer", "desistir"}
+
+
+def _valor_cru(mensagem, campo):
+    """
+    Quando o extractor não reconhece a resposta do campo perguntado, usamos o
+    texto cru da mensagem. Para 'quantidade', pegamos só o primeiro número.
+    """
+    t = (mensagem or "").strip()
+    if campo == "quantidade":
+        m = re.search(r"\d+", t)
+        return m.group(0) if m else None
+    if campo == "tamanho":
+        # Tamanhos curtos (P, M, G, GG, XGG) ficam em maiúsculo; grades por
+        # extenso (infantil, plus size) ficam em minúsculo.
+        return t.upper() if len(t) <= 3 else normalizar(t)
+    return normalizar(t) or None
+
+
+def _fluxo_registrar(slots, sessao, mensagem):
+    """
+    CREATE conversacional: coleta os campos do pedido ao longo da conversa e,
+    quando tudo está preenchido, chama criar.registrar_pedido (que grava no CSV).
+    """
+    if sessao is None:
+        return "Não consegui iniciar o registro agora."
+
+    # Permite abortar o registro a qualquer momento.
+    if normalizar(mensagem).strip() in ABORTAR_REGISTRO:
+        sessao["registro_pedido"] = None
+        sessao["registro_campo_pendente"] = None
+        return "Tudo bem, cancelei o registro do pedido. Posso ajudar em outra coisa?"
+
+    primeiro = sessao.get("registro_pedido") is None
+    reg = sessao.get("registro_pedido") or {}
+
+    # 1. Aproveita qualquer campo que o extractor reconheceu nesta mensagem.
+    for campo in CAMPOS_REGISTRO:
+        if slots.get(campo) not in (None, ""):
+            reg[campo] = slots[campo]
+
+    # 2. Se estávamos esperando um campo específico e o extractor não pegou,
+    #    usa o texto cru da resposta (ex: "M" para tamanho, "nenhuma" p/ personalização).
+    pendente = sessao.get("registro_campo_pendente")
+    if pendente and not reg.get(pendente) and not primeiro:
+        cru = _valor_cru(mensagem, pendente)
+        if cru:
+            reg[pendente] = cru
+
+    sessao["registro_pedido"] = reg
+
+    # 3. Ainda falta algum campo? Pergunta o próximo.
+    faltando = [c for c in CAMPOS_REGISTRO if not reg.get(c)]
+    if faltando:
+        proximo = faltando[0]
+        sessao["registro_campo_pendente"] = proximo
+        intro = "Vamos registrar seu pedido! " if primeiro else ""
+        return intro + PERGUNTAS_REGISTRO[proximo]
+
+    # 4. Completou → grava no CSV e encerra o fluxo de registro.
+    sessao["registro_campo_pendente"] = None
+    sessao["registro_pedido"] = None
+    return criar.registrar_pedido(reg)["mensagem"]
+
+
+def _detectar_alteracao(mensagem, slots):
+    """
+    Descobre qual campo o cliente quer mudar e para qual valor.
+    Retorna (campo, valor) ou (None, None) se não der pra inferir.
+    """
+    t = normalizar(mensagem)
+    if "cor" in t and slots.get("cor"):
+        return "cor", slots["cor"]
+    if "tamanho" in t and (slots.get("tamanho") or slots.get("grade")):
+        return "tamanho", slots.get("tamanho") or slots.get("grade")
+    if ("quantidade" in t or "quantas" in t) and slots.get("quantidade"):
+        return "quantidade", slots["quantidade"]
+    if "personaliza" in t and slots.get("personalizacao"):
+        return "personalizacao", slots["personalizacao"]
+    # Sem palavra-chave clara: tenta inferir pelo único slot presente.
+    if slots.get("cor"):
+        return "cor", slots["cor"]
+    if slots.get("quantidade"):
+        return "quantidade", slots["quantidade"]
+    if slots.get("personalizacao"):
+        return "personalizacao", slots["personalizacao"]
+    return None, None
+
+
 def responder(intencao, slots, dados, sessao=None, mensagem=""):
     """
     Retorna a resposta em texto para o usuário.
     `slots` aqui são os slots EFETIVOS (foco_atual + slots_turno mesclados).
     """
+
+    # ── CREATE: registrar pedido (coleta os campos ao longo da conversa) ──
+    if intencao == "registrar_pedido":
+        return _fluxo_registrar(slots, sessao, mensagem)
 
     # ── Seleção de menu ──────────────────────────────────────────
     if intencao == "selecao_opcao":
@@ -219,24 +333,21 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             "qual produto, qual quantidade e se tem personalização (silk, bordado, DTF)?"
         )
 
-    # ── Cancelar pedido (CRÍTICO 6) ──────────────────────────────
+    # ── DELETE: cancelar pedido (soft delete) ────────────────────
     if intencao == "cancelar_pedido":
         numero = slots.get("numero_pedido")
-        df = dados["pedidos"]
-        etapas_abertas = df[df["pode_alterar"] == "sim"]["etapa"].tolist()
-        etapas_fechadas = df[df["pode_alterar"] == "nao"]["etapa"].tolist()
-        if numero:
+        if not numero:
+            # Ainda não temos o ID → pergunta e guarda a ação como pendente.
+            if sessao is not None:
+                sessao["aguardando_id"] = "cancelar_pedido"
             return (
-                f"Para cancelar o pedido {numero}, fale com o setor de vendas o mais rápido possível. "
-                f"Cancelamento é viável enquanto o pedido está em: {', '.join(etapas_abertas)}. "
-                f"Depois disso ({', '.join(etapas_fechadas)}), só negociação caso a caso — pode haver "
-                "custo de material já consumido."
+                "Pra cancelar, me informa o número do pedido (formato FF-AAAA-NNNN). "
+                "Aviso: cancelamento é livre na modelagem; depois do corte pode haver "
+                "custo de material já usado."
             )
-        return (
-            "Para cancelar um pedido, informe o número (formato FF-AAAA-NNNN) e fale com vendas. "
-            f"Cancelamento é livre na etapa de {etapas_abertas[0] if etapas_abertas else 'modelagem'}; "
-            "a partir do corte, há custo de tecido já cortado."
-        )
+        if sessao is not None:
+            sessao["aguardando_id"] = None
+        return cancelar.cancelar_pedido(numero)["mensagem"]
 
     # ── Disponibilidade de materiais / estoque (CRÍTICO 5) ──────
     if intencao == "disponibilidade_materiais":
@@ -266,44 +377,69 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             + (f" Indisponíveis: {', '.join(t.replace('_',' ') for t in indispon)}." if indispon else "")
         )
 
-    # ── Status do pedido ─────────────────────────────────────────
+    # ── READ: consultar pedido por ID ────────────────────────────
     if intencao == "status_pedido":
         numero = slots.get("numero_pedido")
-        df = dados["pedidos"]
-        # MÉDIO 29: usa lookup_pedidos pra dar info útil sobre etapas
-        etapas = df["etapa"].tolist()
-        if numero:
+        if not numero:
+            # Não veio o ID → pergunta e marca que estamos esperando ele.
+            if sessao is not None:
+                sessao["aguardando_id"] = "status_pedido"
             return (
-                f"O pedido {numero} precisa ser consultado pelo setor de logística "
-                "em tempo real (eles têm acesso direto à esteira de produção). "
-                f"Para sua referência, um pedido passa pelas etapas: {' → '.join(etapas)}. "
-                "Alterações só são possíveis na primeira; depois do corte, qualquer mudança "
-                "gera retrabalho."
+                "Claro! Me informa o número do pedido que eu consulto o andamento na "
+                "produção. O formato é FF-AAAA-NNNN (ex: FF-2026-0001)."
             )
-        return (
-            "Para verificar a etapa de um pedido, informe o número no formato FF-AAAA-NNNN e fale "
-            "com a logística. "
-            f"As etapas do processo são: {' → '.join(etapas)}."
-        )
+        if sessao is not None:
+            sessao["aguardando_id"] = None
+        return consultar.consultar_pedido(numero)["mensagem"]
 
-    # ── Alterar pedido ───────────────────────────────────────────
+    # ── UPDATE: alterar um campo do pedido ───────────────────────
     if intencao == "alterar_pedido_especifico":
         numero = slots.get("numero_pedido")
-        df = dados["pedidos"]
-        etapas_abertas = df[df["pode_alterar"] == "sim"]["etapa"].tolist()
-        etapas_fechadas = df[df["pode_alterar"] == "nao"]["etapa"].tolist()
-        if numero:
+        campo, valor = _detectar_alteracao(mensagem, slots)
+        # Recupera a alteração que guardamos enquanto pedíamos o ID.
+        if (campo is None or valor is None) and sessao and sessao.get("alteracao_pendente"):
+            campo = sessao["alteracao_pendente"].get("campo")
+            valor = sessao["alteracao_pendente"].get("valor")
+        if not numero:
+            # Falta o ID → pergunta e guarda o que o cliente quer mudar.
+            if sessao is not None:
+                sessao["aguardando_id"] = "alterar_pedido_especifico"
+                sessao["alteracao_pendente"] = {"campo": campo, "valor": valor}
             return (
-                f"Para verificar se o pedido {numero} ainda pode ser alterado, "
-                "fale com vendas o quanto antes. "
-                f"Alterações possíveis na etapa de: {', '.join(etapas_abertas)}. "
-                f"Se já estiver em: {', '.join(etapas_fechadas)}, não será viável."
+                "Pra alterar, me informa o número do pedido (FF-AAAA-NNNN). Lembrando: "
+                "só dá pra alterar enquanto está na etapa de modelagem."
             )
-        return (
-            f"Alterações em pedidos só rolam enquanto está em: {', '.join(etapas_abertas)}. "
-            f"A partir de {etapas_fechadas[0]}, a alteração gera retrabalho e custo. "
-            "Informe o número do pedido (FF-AAAA-NNNN) ao setor de vendas."
-        )
+        if sessao is not None:
+            sessao["aguardando_id"] = None
+        if not campo or valor is None:
+            if sessao is not None:
+                sessao["alteracao_pendente"] = None
+            return (
+                f"O que você quer mudar no pedido {numero}? Posso alterar cor, tamanho, "
+                "quantidade ou personalização — e me diz pro quê. "
+                "Ex: 'mudar a cor para branco'."
+            )
+        resultado = atualizar.alterar_campo(numero, campo, valor)
+        if sessao is not None:
+            sessao["alteracao_pendente"] = None
+        return resultado["mensagem"]
+
+    # ── UPDATE (Produção): avançar o pedido para a próxima etapa ──
+    # É a operação principal do nosso setor segundo a Semana 3 ("avançar a
+    # etapa de fabricação"). Quem usa é a produção (ex: a costureira terminou
+    # uma fase e registra que a peça passou pra próxima).
+    if intencao == "avancar_etapa":
+        numero = slots.get("numero_pedido")
+        if not numero:
+            if sessao is not None:
+                sessao["aguardando_id"] = "avancar_etapa"
+            return (
+                "Qual o número do pedido que vou avançar de etapa? "
+                "(formato FF-AAAA-NNNN)"
+            )
+        if sessao is not None:
+            sessao["aguardando_id"] = None
+        return atualizar.avancar_etapa(numero)["mensagem"]
 
     # ── Viabilidade de produção ──────────────────────────────────
     if intencao == "viabilidade_producao":

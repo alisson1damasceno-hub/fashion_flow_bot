@@ -53,6 +53,11 @@ def criar_sessao():
         "foco_atual": {},        # slots do assunto atual (curto prazo)
         "historico_turnos": [],  # registro completo de cada turno (longo prazo)
         "aguardando_opcao": None,
+        # ── estados do CRUD de pedidos ──────────────────────────────
+        "aguardando_id": None,          # ação esperando o ID ("status_pedido"/"cancelar_pedido"/...)
+        "alteracao_pendente": None,     # {campo, valor} guardado até o cliente mandar o ID
+        "registro_pedido": None,        # dados coletados do pedido em registro (CREATE), ou None
+        "registro_campo_pendente": None,  # campo que estamos perguntando agora
         "ultimo_assunto": None,
         "ativa": False,
     }
@@ -63,6 +68,10 @@ def resetar_sessao(sessao):
     sessao["foco_atual"] = {}
     sessao["historico_turnos"] = []
     sessao["aguardando_opcao"] = None
+    sessao["aguardando_id"] = None
+    sessao["alteracao_pendente"] = None
+    sessao["registro_pedido"] = None
+    sessao["registro_campo_pendente"] = None
     sessao["ultimo_assunto"] = None
     sessao["ativa"] = False
     return sessao
