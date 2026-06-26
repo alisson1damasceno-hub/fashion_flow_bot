@@ -2,17 +2,10 @@
 Geração da resposta a partir da intenção classificada + slots efetivos + dados.
 """
 import re
-import unicodedata
 
+from bot.normalizar import normalizar
 # CRUD de pedidos — cada operação mora no seu próprio arquivo em bot/pedidos/.
 from bot.pedidos import criar, consultar, atualizar, cancelar
-
-
-def normalizar(texto):
-    texto = texto.lower()
-    texto = unicodedata.normalize("NFD", texto)
-    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
-    return texto
 
 
 def pecas(qtd):
@@ -99,6 +92,7 @@ def _fluxo_registrar(slots, sessao, mensagem):
     # 4. Completou → grava no CSV e encerra o fluxo de registro.
     sessao["registro_campo_pendente"] = None
     sessao["registro_pedido"] = None
+    reg["cliente"] = sessao.get("nome_cliente", "")   # o dono é o nome da conversa
     return criar.registrar_pedido(reg)["mensagem"]
 
 
@@ -347,7 +341,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             )
         if sessao is not None:
             sessao["aguardando_id"] = None
-        return cancelar.cancelar_pedido(numero)["mensagem"]
+        return cancelar.cancelar_pedido(numero, sessao.get("nome_cliente") if sessao else None)["mensagem"]
 
     # ── Disponibilidade de materiais / estoque (CRÍTICO 5) ──────
     if intencao == "disponibilidade_materiais":
@@ -390,7 +384,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             )
         if sessao is not None:
             sessao["aguardando_id"] = None
-        return consultar.consultar_pedido(numero)["mensagem"]
+        return consultar.consultar_pedido(numero, sessao.get("nome_cliente") if sessao else None)["mensagem"]
 
     # ── UPDATE: alterar um campo do pedido ───────────────────────
     if intencao == "alterar_pedido_especifico":
@@ -419,27 +413,14 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 "quantidade ou personalização — e me diz pro quê. "
                 "Ex: 'mudar a cor para branco'."
             )
-        resultado = atualizar.alterar_campo(numero, campo, valor)
+        resultado = atualizar.alterar_campo(numero, campo, valor, sessao.get("nome_cliente") if sessao else None)
         if sessao is not None:
             sessao["alteracao_pendente"] = None
         return resultado["mensagem"]
 
-    # ── UPDATE (Produção): avançar o pedido para a próxima etapa ──
-    # É a operação principal do nosso setor segundo a Semana 3 ("avançar a
-    # etapa de fabricação"). Quem usa é a produção (ex: a costureira terminou
-    # uma fase e registra que a peça passou pra próxima).
-    if intencao == "avancar_etapa":
-        numero = slots.get("numero_pedido")
-        if not numero:
-            if sessao is not None:
-                sessao["aguardando_id"] = "avancar_etapa"
-            return (
-                "Qual o número do pedido que vou avançar de etapa? "
-                "(formato FF-AAAA-NNNN)"
-            )
-        if sessao is not None:
-            sessao["aguardando_id"] = None
-        return atualizar.avancar_etapa(numero)["mensagem"]
+    # Obs: NÃO existe handler de "avançar etapa" aqui. Avançar a peça na esteira
+    # (modelagem -> corte -> ...) é ação da produção interna, não do cliente. A
+    # função atualizar.avancar_etapa existe e é testada, mas não é exposta no chat.
 
     # ── Viabilidade de produção ──────────────────────────────────
     if intencao == "viabilidade_producao":

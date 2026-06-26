@@ -3,13 +3,8 @@ Filtro de Segurança — Missão 2.
 Roda ANTES de tudo: se a mensagem tem dado sensível, bloqueia o turno.
 """
 import re
-import unicodedata
 
-
-def _normalizar(texto):
-    texto = texto.lower()
-    texto = unicodedata.normalize("NFD", texto)
-    return "".join(c for c in texto if unicodedata.category(c) != "Mn")
+from bot.normalizar import normalizar
 
 
 PADROES_SENSIVEIS = [
@@ -32,7 +27,7 @@ RESPOSTA_BLOQUEIO = (
 
 
 def verificar_seguranca(mensagem):
-    t = _normalizar(mensagem)
+    t = normalizar(mensagem)
     for padrao in PADROES_SENSIVEIS:
         if re.search(padrao, t):
             return RESPOSTA_BLOQUEIO   # achou dado sensível → bloqueia

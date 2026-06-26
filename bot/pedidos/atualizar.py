@@ -24,14 +24,7 @@ Pseudocódigo equivalente (Semana 3 — UPDATE = READ + alterar + SALVAR):
       FIM SE
     FIM DO PROCESSO
 """
-import pandas as pd
-from pathlib import Path
-
 from bot.pedidos import persistencia
-
-_CAMINHO_ETAPAS = (
-    Path(__file__).resolve().parent.parent.parent / "data" / "lookup_etapas.csv"
-)
 
 # Campos que o cliente pode alterar (enquanto está na modelagem).
 CAMPOS_ALTERAVEIS = ["cor", "tamanho", "quantidade", "personalizacao"]
@@ -39,18 +32,17 @@ CAMPOS_ALTERAVEIS = ["cor", "tamanho", "quantidade", "personalizacao"]
 
 def _etapas_em_ordem():
     """Lista as etapas na ordem do processo (a ordem das linhas do CSV)."""
-    df = pd.read_csv(_CAMINHO_ETAPAS)
-    return df["etapa"].tolist()
+    return persistencia.carregar_etapas()["etapa"].tolist()
 
 
 def _pode_alterar(etapa):
     """True se a etapa permite alteração (só a modelagem, hoje)."""
-    df = pd.read_csv(_CAMINHO_ETAPAS).fillna("")
+    df = persistencia.carregar_etapas()
     linha = df[df["etapa"] == etapa]
     return (not linha.empty) and linha.iloc[0]["pode_alterar"] == "sim"
 
 
-def alterar_campo(numero, campo, novo_valor):
+def alterar_campo(numero, campo, novo_valor, nome_cliente=None):
     """
     Altera um campo do pedido, se a etapa permitir.
 
@@ -71,6 +63,14 @@ def alterar_campo(numero, campo, novo_valor):
         return {
             "sucesso": False,
             "mensagem": f"Não encontrei o pedido {numero}. Confere o número?",
+            "pedido": None,
+        }
+
+    # É desse cliente? (trava de dono)
+    if not persistencia.e_dono(linha, nome_cliente):
+        return {
+            "sucesso": False,
+            "mensagem": f"O pedido {numero} não está no seu nome.",
             "pedido": None,
         }
 
@@ -116,6 +116,14 @@ def avancar_etapa(numero):
         return {
             "sucesso": False,
             "mensagem": f"Não encontrei o pedido {numero}.",
+            "pedido": None,
+        }
+
+    # Não faz sentido avançar a produção de um pedido cancelado.
+    if linha["status"] == "cancelado":
+        return {
+            "sucesso": False,
+            "mensagem": f"O pedido {numero} está cancelado — não dá pra avançar de etapa.",
             "pedido": None,
         }
 

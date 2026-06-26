@@ -14,6 +14,7 @@ from bot.extractor import extrair_slots
 from bot.classifier import classificar
 from bot.responder import responder
 from bot.seguranca import verificar_seguranca
+from bot.cliente import tratar_nome, personalizar
 from bot.contexto import (
     criar_sessao, resetar_sessao,
     is_despedida, is_casual,
@@ -59,6 +60,11 @@ def chat(req: MensagemRequest):
     if bloqueio:
         return {"resposta": bloqueio, "intencao": "bloqueio_seguranca"}
 
+    # Personalização: no início da conversa, pergunta e guarda o nome do cliente.
+    resposta_nome = tratar_nome(mensagem, sessao)
+    if resposta_nome is not None:
+        return {"resposta": resposta_nome, "intencao": "captura_nome"}
+
     if is_despedida(mensagem):
         sessoes[sessao_id] = resetar_sessao(sessao)
         return {"resposta": "Até logo! Se precisar, é só voltar."}
@@ -71,6 +77,7 @@ def chat(req: MensagemRequest):
     slots_efetivos = merge_com_contexto(slots_turno, sessao)
     intencao = classificar(mensagem, slots_turno, slots_efetivos, dados["intencoes"], sessao)
     resposta = responder(intencao, slots_efetivos, dados, sessao, mensagem)
+    resposta = personalizar(resposta, sessao)
     atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, resposta)
 
     return {"resposta": resposta, "intencao": intencao}
@@ -83,6 +90,8 @@ def get_sessao(sessao_id: str):
         return {"erro": "sessão não encontrada"}
     s = sessoes[sessao_id]
     return {
+        "estado_conversa": s.get("estado_conversa"),
+        "objetivo_usuario": s.get("objetivo_usuario"),
         "foco_atual": s["foco_atual"],
         "ultimo_assunto": s["ultimo_assunto"],
         "aguardando_opcao": s["aguardando_opcao"],

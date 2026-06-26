@@ -13,14 +13,19 @@ import pandas as pd
 from pathlib import Path
 from datetime import date
 
+from bot.normalizar import normalizar
+
 # Caminho do data/pedidos.csv a partir de bot/pedidos/persistencia.py
 # (sobe 3 níveis: persistencia.py -> pedidos -> bot -> raiz do projeto)
 CAMINHO_CSV = Path(__file__).resolve().parent.parent.parent / "data" / "pedidos.csv"
 
+# Caminho da tabela de ETAPAS (referência: quais etapas existem e se pode alterar).
+CAMINHO_ETAPAS = Path(__file__).resolve().parent.parent.parent / "data" / "lookup_etapas.csv"
+
 # Ordem oficial das colunas. Usada ao criar uma linha nova, pra garantir que os
 # valores entrem na ordem certa.
 COLUNAS = [
-    "numero_pedido", "data_criacao", "produto", "quantidade", "cor",
+    "numero_pedido", "data_criacao", "cliente", "produto", "quantidade", "cor",
     "tamanho", "tecido", "personalizacao", "etapa_atual", "status",
     "data_prevista", "observacao",
 ]
@@ -36,6 +41,16 @@ def carregar():
     """
     df = pd.read_csv(CAMINHO_CSV, dtype=str).fillna("")
     return df
+
+
+def carregar_etapas():
+    """
+    Lê a tabela de ETAPAS (lookup_etapas.csv): quais etapas existem, em ordem, e
+    se cada uma permite alteração (coluna pode_alterar). É uma tabela de
+    referência — o consultar.py e o atualizar.py usam isto em vez de cada um
+    abrir o arquivo por conta própria.
+    """
+    return pd.read_csv(CAMINHO_ETAPAS).fillna("")
 
 
 def salvar(df):
@@ -86,3 +101,16 @@ def gerar_id(df=None, ano=None):
         # os 4 últimos caracteres são o número sequencial
         seq = do_ano["numero_pedido"].str[-4:].astype(int).max() + 1
     return f"{prefixo}{seq:04d}"
+
+
+def e_dono(linha, nome_cliente):
+    """
+    Diz se o pedido (linha) pertence a esse cliente. Compara o campo 'cliente'
+    do pedido com o nome guardado na conversa, SEM ligar pra maiúscula nem acento.
+
+    Se nome_cliente for None (uso interno/operador ou teste), NÃO checa e devolve
+    True — a trava de dono só vale quando há um nome informado.
+    """
+    if not nome_cliente:
+        return True
+    return normalizar(str(linha.get("cliente", ""))) == normalizar(str(nome_cliente))

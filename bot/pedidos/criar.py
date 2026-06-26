@@ -68,6 +68,7 @@ def registrar_pedido(dados_pedido):
     novo = {
         "numero_pedido": persistencia.gerar_id(df, hoje.year),  # ID gerado aqui
         "data_criacao": hoje.isoformat(),
+        "cliente": dados_pedido.get("cliente", ""),  # dono = nome guardado na conversa
         "produto": dados_pedido["produto"],
         "quantidade": str(dados_pedido["quantidade"]),
         "cor": dados_pedido["cor"],
