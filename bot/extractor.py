@@ -8,7 +8,8 @@ REGRAS DE OURO:
   quantidade (evita o Crítico 3: número do menu virar quantidade).
 """
 import re
-import unicodedata
+
+from bot.normalizar import normalizar
 
 
 # ── Unidades que podem acompanhar uma quantidade ───────────────────
@@ -116,14 +117,6 @@ USOS = [
     ("formal", "formal"),
     ("meia estacao", "meia_estacao"),
 ]
-
-
-def normalizar(texto):
-    """Remove acentos e converte para minúsculas."""
-    texto = texto.lower()
-    texto = unicodedata.normalize("NFD", texto)
-    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
-    return texto
 
 
 def _primeiro_match(padroes, texto):

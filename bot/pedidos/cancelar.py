@@ -25,7 +25,7 @@ Pseudocódigo equivalente (Semana 3 — SOFT DELETE, que é tecnicamente um UPDA
 from bot.pedidos import persistencia
 
 
-def cancelar_pedido(numero, motivo=""):
+def cancelar_pedido(numero, nome_cliente=None, motivo=""):
     """
     Cancela um pedido (soft delete: status vira 'cancelado').
 
@@ -38,6 +38,14 @@ def cancelar_pedido(numero, motivo=""):
         return {
             "sucesso": False,
             "mensagem": f"Não encontrei o pedido {numero}. Confere o número?",
+            "pedido": None,
+        }
+
+    # É desse cliente? (trava de dono)
+    if not persistencia.e_dono(linha, nome_cliente):
+        return {
+            "sucesso": False,
+            "mensagem": f"O pedido {numero} não está no seu nome.",
             "pedido": None,
         }
 

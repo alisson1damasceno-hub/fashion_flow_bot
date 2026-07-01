@@ -1,5 +1,5 @@
 # core do bot (loader, extractor, classifier, responder)
-pandas>=3.0.0
+pandas>=2.0.0
 rapidfuzz>=3.0.0
 
 # API REST (app.py) — usada pelo index.html e pra deploy

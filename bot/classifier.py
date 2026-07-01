@@ -10,15 +10,22 @@ ainda está na sessão (ex: CRÍTICO 5 — numero_pedido fazendo qualquer
 mensagem virar status_pedido).
 """
 import re
-import unicodedata
 from rapidfuzz import fuzz
 
+from bot.normalizar import normalizar
 
-def normalizar(texto):
-    texto = texto.lower()
-    texto = unicodedata.normalize("NFD", texto)
-    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
-    return texto
+
+def _peso(row):
+    """
+    Lê o PESO da intenção (coluna 'peso' do intencoes.csv). É o número que
+    decide quem ganha quando mais de uma intenção bate na mesma frase:
+    quanto maior o peso, mais a intenção tem prioridade. Se faltar, usa 5.
+    """
+    try:
+        p = float(row.get("peso", 5))
+        return p if p == p else 5.0   # p == p é False quando é NaN
+    except (TypeError, ValueError):
+        return 5.0
 
 
 def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
@@ -59,12 +66,9 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
        re.search(r'\bnovo pedido\b', t):
         return "registrar_pedido"
 
-    # UPDATE (operação-assinatura da Produção, Semana 3): avançar a etapa de
-    # fabricação. Precisa vir ANTES da regra de status ("etapa do pedido").
-    if re.search(r'avancar (a )?etapa|avancar (o |esse |este )?pedido|'
-                 r'avancar (a )?producao|proxima etapa|passar (pra|para) (a )?proxima|'
-                 r'concluir (a )?etapa|avancei (a )?etapa', t):
-        return "avancar_etapa"
+    # Obs: "avançar etapa" NÃO é ação do cliente (é da produção interna), então
+    # não tem regra de chat aqui. A função existe em bot/pedidos/atualizar.py e é
+    # exercitada pelos testes e pela demo, mas o cliente não dispara isso conversando.
 
     # CRÍTICO 5: estoque vence pedido herdado
     if re.search(r'\bestoque\b|\bem estoque\b|\btem (algodao|dry.?fit|malha|jeans|viscose|linho|moletom|suplex|tecido|tencel|alfaiataria|la|rpet)\b', t):
@@ -157,7 +161,11 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if slots_turno.get("prazo_desejado") and not produto and not quantidade:
         return "prazo_sem_contexto"
 
-    # ── 8. Keywords exatas do CSV ─────────────────────────────────
+    # ── 8. Palavras-chave do CSV (desempate por PESO) ─────────────
+    # Antes era "a primeira intenção que bater vence". Agora coletamos TODAS as
+    # intenções cuja palavra-chave aparece na frase e ficamos com a de MAIOR PESO.
+    melhor_peso = -1.0
+    melhor_kw = None
     for _, row in intencoes.iterrows():
         keywords = str(row["palavras_chave"]).strip()
         if not keywords or keywords == "nan":
@@ -165,22 +173,32 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
         for kw in keywords.split("|"):
             kw = normalizar(kw.strip())
             if kw and kw in t:
-                return row["id_intencao"]
+                peso = _peso(row)
+                if peso > melhor_peso:
+                    melhor_peso = peso
+                    melhor_kw = row["id_intencao"]
+                break  # essa intenção já bateu; não precisa testar as outras kw dela
+    if melhor_kw:
+        return melhor_kw
 
-    # ── 9. Similaridade textual (rapidfuzz) ───────────────────────
+    # ── 9. Similaridade textual (rapidfuzz), desempate por peso ───
     melhor_score = 0
+    melhor_peso = -1.0
     melhor_intencao = None
     for _, row in intencoes.iterrows():
         keywords = str(row["palavras_chave"]).strip()
         if not keywords or keywords == "nan":
             continue
+        peso = _peso(row)
         for kw in keywords.split("|"):
             kw = normalizar(kw.strip())
             if not kw:
                 continue
             score = fuzz.partial_ratio(kw, t)
-            if score > melhor_score:
+            # vence o maior score; se empatar no score, vence o maior peso
+            if score > melhor_score or (score == melhor_score and peso > melhor_peso):
                 melhor_score = score
+                melhor_peso = peso
                 melhor_intencao = row["id_intencao"]
 
     if melhor_score >= 85:

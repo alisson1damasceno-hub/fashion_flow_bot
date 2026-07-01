@@ -20,28 +20,19 @@ Pseudocódigo equivalente (Semana 3 — READ, com o SE/SENÃO do "erro 404"):
       FIM SE
     FIM DO PROCESSO
 """
-import pandas as pd
-from pathlib import Path
-
 from bot.pedidos import persistencia
-
-# A tabela de etapas (lookup_etapas.csv) diz, para cada etapa, se ainda dá pra
-# alterar o pedido e o que está acontecendo nela.
-_CAMINHO_ETAPAS = (
-    Path(__file__).resolve().parent.parent.parent / "data" / "lookup_etapas.csv"
-)
 
 
 def _info_etapa(etapa):
     """Devolve a linha da etapa (pode_alterar, descricao, observacao)."""
-    df = pd.read_csv(_CAMINHO_ETAPAS).fillna("")
+    df = persistencia.carregar_etapas()
     linha = df[df["etapa"] == etapa]
     if linha.empty:
         return {"pode_alterar": "nao", "descricao": "", "observacao": ""}
     return linha.iloc[0].to_dict()
 
 
-def consultar_pedido(numero):
+def consultar_pedido(numero, nome_cliente=None):
     """
     Consulta um pedido pelo ID.
 
@@ -58,6 +49,14 @@ def consultar_pedido(numero):
             "sucesso": False,
             "mensagem": f"Não encontrei o pedido {numero}. Confere o número? "
                         "O formato é FF-AAAA-NNNN, por exemplo FF-2026-0001.",
+            "pedido": None,
+        }
+
+    # Trava de dono: só mostra o pedido se ele for desse cliente.
+    if not persistencia.e_dono(linha, nome_cliente):
+        return {
+            "sucesso": False,
+            "mensagem": f"O pedido {numero} não está no seu nome. Confere o número?",
             "pedido": None,
         }
 

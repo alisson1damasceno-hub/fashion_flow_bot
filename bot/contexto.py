@@ -9,7 +9,9 @@ Design:
 - ativa: se a conversa já começou
 """
 import re
-import unicodedata
+
+from bot.estados import estado_da_conversa, objetivo_do_usuario
+from bot.normalizar import normalizar
 
 
 # ── slots que NUNCA persistem no foco_atual ──────────────────────
@@ -40,24 +42,23 @@ INTENCOES_PEDIDO = {
 }
 
 
-def normalizar(texto):
-    texto = texto.lower()
-    texto = unicodedata.normalize("NFD", texto)
-    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
-    return texto
-
-
 def criar_sessao():
     """Cria sessão nova e vazia."""
     return {
         "foco_atual": {},        # slots do assunto atual (curto prazo)
         "historico_turnos": [],  # registro completo de cada turno (longo prazo)
         "aguardando_opcao": None,
+        # ── personalização: nome do cliente (ver bot/cliente.py) ────
+        "nome_cliente": None,            # o nome, guardado durante a conversa
+        "aguardando_nome": False,        # True enquanto esperamos o cliente dizer o nome
         # ── estados do CRUD de pedidos ──────────────────────────────
         "aguardando_id": None,          # ação esperando o ID ("status_pedido"/"cancelar_pedido"/...)
         "alteracao_pendente": None,     # {campo, valor} guardado até o cliente mandar o ID
         "registro_pedido": None,        # dados coletados do pedido em registro (CREATE), ou None
         "registro_campo_pendente": None,  # campo que estamos perguntando agora
+        # ── mapa de estados da conversa (ver bot/estados.py) ────────
+        "estado_conversa": "OCIOSO",     # ONDE estamos no diálogo
+        "objetivo_usuario": None,        # O QUE o usuário quer (meta grande)
         "ultimo_assunto": None,
         "ativa": False,
     }
@@ -68,10 +69,14 @@ def resetar_sessao(sessao):
     sessao["foco_atual"] = {}
     sessao["historico_turnos"] = []
     sessao["aguardando_opcao"] = None
+    sessao["nome_cliente"] = None
+    sessao["aguardando_nome"] = False
     sessao["aguardando_id"] = None
     sessao["alteracao_pendente"] = None
     sessao["registro_pedido"] = None
     sessao["registro_campo_pendente"] = None
+    sessao["estado_conversa"] = "OCIOSO"
+    sessao["objetivo_usuario"] = None
     sessao["ultimo_assunto"] = None
     sessao["ativa"] = False
     return sessao
@@ -133,6 +138,14 @@ def atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, respo
         sessao["ultimo_assunto"] = intencao
 
     sessao["ativa"] = True
+
+    # ── atualiza o MAPA DE ESTADOS da conversa (ver bot/estados.py) ──
+    # estado_conversa é recalculado todo turno (deriva dos sinais acima);
+    # objetivo_usuario não muda numa seleção de menu (preserva a meta real).
+    sessao["estado_conversa"] = estado_da_conversa(sessao)
+    if intencao != "selecao_opcao":
+        sessao["objetivo_usuario"] = objetivo_do_usuario(intencao)
+
     return sessao
 
 

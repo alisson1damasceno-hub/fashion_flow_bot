@@ -7,6 +7,7 @@ from bot.extractor import extrair_slots
 from bot.classifier import classificar
 from bot.responder import responder
 from bot.seguranca import verificar_seguranca
+from bot.cliente import tratar_nome, personalizar
 from bot.contexto import (
     criar_sessao, resetar_sessao,
     is_despedida, is_casual,
@@ -52,6 +53,8 @@ def main():
 
         # Comando de debug: mostra o foco atual e o histórico
         if mensagem.startswith("/contexto"):
+            print(f"  estado_conversa: {sessao['estado_conversa']}")
+            print(f"  objetivo_usuario: {sessao['objetivo_usuario']}")
             print(f"  foco_atual: {sessao['foco_atual']}")
             print(f"  ultimo_assunto: {sessao['ultimo_assunto']}")
             print(f"  aguardando_opcao: {sessao['aguardando_opcao']}")
@@ -59,6 +62,13 @@ def main():
             for i, t in enumerate(sessao["historico_turnos"][-5:], 1):
                 print(f"    {i}. [{t['intencao']}] {t['msg']!r}")
             print()
+            continue
+
+        # Personalização (Semana 3): no começo da conversa, o bot pergunta e
+        # guarda o nome do cliente. Enquanto cuida disso, não roda o fluxo normal.
+        resposta_nome = tratar_nome(mensagem, sessao)
+        if resposta_nome is not None:
+            print(f"Bot: {resposta_nome}\n")
             continue
 
         # Despedida pura → reseta sessão
@@ -78,6 +88,7 @@ def main():
         slots_efetivos = merge_com_contexto(slots_turno, sessao)
         intencao = classificar(mensagem, slots_turno, slots_efetivos, dados["intencoes"], sessao)
         resposta = responder(intencao, slots_efetivos, dados, sessao, mensagem)
+        resposta = personalizar(resposta, sessao)   # chama o cliente pelo nome
         atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, resposta)
 
         print(f"Bot: {resposta}\n")
