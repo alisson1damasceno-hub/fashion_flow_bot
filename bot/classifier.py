@@ -102,6 +102,17 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     produto = slots_efetivos.get("produto")
     prazo_desejado = slots_efetivos.get("prazo_desejado") or slots_turno.get("prazo_desejado")
 
+    # ── 3b. Prazo COM personalização ──────────────────────────────
+    # "prazo com bordado/silk/dtf" caía em personalizacao_X (a DESCRIÇÃO da técnica)
+    # em vez de responder o PRAZO. Se a frase fala de prazo E há uma personalização,
+    # é pergunta de prazo-com-personalização (com produto/qtd → a versão combinada).
+    tem_prazo = bool(re.search(r'\bprazo\b|quanto tempo|demora|quando fica', t))
+    pers = slots_efetivos.get("personalizacao")
+    if tem_prazo and pers and pers != "nenhuma":
+        if produto or quantidade:
+            return "combinado_prazo_personalizacao_produto"
+        return "prazo_com_personalizacao"
+
     # Intenção EXPLÍCITA na frase tem prioridade
     if quantidade and produto:
         if re.search(r'custa|preco|preço|valor|orcamento|quanto fica|sai por', t):
@@ -115,7 +126,11 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
        and quantidade:
         return "viabilidade_producao"
 
-    if re.search(r'capacidade|materia.?prima|consegue produzir|da para produzir', t):
+    # "capacidade" sozinha NÃO é viabilidade: "capacidade produtiva/da fábrica" é
+    # pergunta INFORMATIVA (cai em producao_capacidade na etapa de keyword). Só
+    # forçamos viabilidade quando a pessoa pergunta se CONSEGUIMOS produzir algo.
+    if re.search(r'consegue(m)? produzir|da p(?:a?ra) produzir|'
+                 r'capacidade tecnica|capacidade de produc', t):
         return "viabilidade_producao"
 
     # ── 5. Follow-up: usuário refinou um slot, herda último assunto ─
@@ -177,6 +192,13 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     # ── 8. Palavras-chave do CSV (desempate por PESO) ─────────────
     # Antes era "a primeira intenção que bater vence". Agora coletamos TODAS as
     # intenções cuja palavra-chave aparece na frase e ficamos com a de MAIOR PESO.
+    #
+    # A busca exige FRONTEIRA DE PALAVRA à esquerda da keyword (\b) — senão
+    # keywords curtas casam DENTRO de outras palavras e geram respostas absurdas:
+    # "mano" dentro de "hu-mano", "vei" dentro de "dura-vei-s"/"sustenta-vei-s",
+    # "cad" dentro de "a-cad-emia". O \b só na frente preserva plurais/sufixos
+    # ("camiseta" ainda casa "camisetas"); keywords que começam com símbolo
+    # (ex: "% algodao") mantêm a busca por substring.
     melhor_peso = -1.0
     melhor_kw = None
     for _, row in intencoes.iterrows():
@@ -185,7 +207,10 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
             continue
         for kw in keywords.split("|"):
             kw = normalizar(kw.strip())
-            if kw and kw in t:
+            if not kw:
+                continue
+            padrao = (r'\b' + re.escape(kw)) if kw[0].isalnum() else re.escape(kw)
+            if re.search(padrao, t):
                 peso = _peso(row)
                 if peso > melhor_peso:
                     melhor_peso = peso
@@ -205,7 +230,11 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
         peso = _peso(row)
         for kw in keywords.split("|"):
             kw = normalizar(kw.strip())
-            if not kw:
+            # Keywords curtíssimas (≤3 letras: "vei", "bro", "dtf", "la") NÃO entram
+            # no fuzzy: partial_ratio de 2-3 letras casa dentro de qualquer palavra
+            # longa ("vei" em "sustenta-vei-s"/"dura-vei-s") e gera intenção absurda.
+            # O match exato dessas já foi feito na etapa 8; aqui elas só dão ruído.
+            if len(kw) < 4:
                 continue
             score = fuzz.partial_ratio(kw, t)
             # vence o maior score; se empatar no score, vence o maior peso
