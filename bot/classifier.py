@@ -13,6 +13,35 @@ import re
 from rapidfuzz import fuzz
 
 from bot.normalizar import normalizar
+# Palavras que abortam o registro de pedido (usadas aqui pra decidir se uma
+# mensagem durante o registro é "abandonar o formulário" antes de recalcular
+# a intenção — ver bloco 0b). Fonte da verdade: bot/responder.py.
+from bot.responder import ABORTAR_REGISTRO
+
+
+def _parece_resposta_de_campo(pendente, mensagem, slots_turno):
+    """
+    Palpite rápido e barato: essa mensagem parece só a resposta do campo que
+    o formulário de registro está esperando agora (ex: "M", "42", "nenhuma")?
+
+    Isso evita rodar o Sistema de Pesos (pensado pra frases inteiras) em cima
+    de respostas curtas — que podem bater por acidente com uma palavra-chave
+    de outro assunto (ex: fuzzy matching dando score alto pra uma letra só) e
+    gerar um falso positivo de "mudança de assunto".
+    """
+    if not pendente:
+        return False
+    # O extractor já reconheceu o valor certinho pra este campo — sem dúvida.
+    if slots_turno.get(pendente):
+        return True
+    t = normalizar(mensagem).strip()
+    if pendente == "quantidade":
+        return bool(re.match(r'^\d+$', t))
+    if pendente == "tamanho":
+        return t in {"pp", "p", "m", "g", "gg", "xgg", "infantil", "plus size", "plus_size"}
+    if pendente == "personalizacao":
+        return t in {"nenhuma", "nenhum", "sem personalizacao", "sem personalização"}
+    return False
 
 
 def _peso(row):
@@ -40,15 +69,57 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
 
     # ── 0b. Fluxos de CRUD de pedido em andamento ────────────────
     if sessao:
-        # Registro de pedido (CREATE) em andamento → continua coletando os campos.
+        # Registro de pedido (CREATE) em andamento.
         if sessao.get("registro_pedido") is not None:
-            return "registrar_pedido"
+            # Palavra de abortar formulário ("cancelar", "esquece"...) tem
+            # prioridade — é o responder.py quem trata o texto de cancelamento.
+            if t.strip() in ABORTAR_REGISTRO:
+                return "registrar_pedido"
+
+            # Resposta curta e esperada do campo atual (ex: "M", "42",
+            # "nenhuma", ou o extractor já reconheceu o valor) → nem precisa
+            # recalcular, é claramente continuação do formulário.
+            pendente = sessao.get("registro_campo_pendente")
+            if _parece_resposta_de_campo(pendente, mensagem, slots_turno):
+                return "registrar_pedido"
+
+            # RECÁLCULO DE INTENÇÃO ("o ataque da mudança de assunto"): antes,
+            # aqui a gente simplesmente devolvia "registrar_pedido" pra
+            # QUALQUER mensagem, e o cliente ficava preso no formulário pra
+            # sempre se mudasse de assunto no meio do caminho. Agora, a cada
+            # mensagem nova, recalculamos a intenção de verdade usando o
+            # Sistema de Pesos (as mesmas regras dos passos 1 a 9 abaixo).
+            nova_intencao = _classificar_pelas_regras(
+                t, mensagem, slots_turno, slots_efetivos, intencoes, sessao
+            )
+
+            # Se a mensagem não bateu com nenhum outro assunto (fallback),
+            # é porque ela é só uma resposta de campo do formulário mesmo
+            # (ex: "M", "42", "nenhuma") → segue coletando normalmente.
+            if nova_intencao in ("fallback", "registrar_pedido"):
+                return "registrar_pedido"
+
+            # Intenção diferente e reconhecida com confiança → o cliente
+            # mudou de assunto. Abandona o formulário e devolve a nova
+            # intenção pro Roteador Central (app.py) decidir o que fazer —
+            # em vez de forçar o fluxo de registro pra sempre.
+            return nova_intencao
+
         # Pedimos um ID antes e ele chegou agora → executa a ação que ficou pendente
         # (consultar / cancelar / alterar). Guardada em sessao["aguardando_id"].
         acao_pendente = sessao.get("aguardando_id")
         if acao_pendente and slots_turno.get("numero_pedido"):
             return acao_pendente
 
+    return _classificar_pelas_regras(t, mensagem, slots_turno, slots_efetivos, intencoes, sessao)
+
+
+def _classificar_pelas_regras(t, mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
+    """
+    O "Sistema de Pesos": passos 1 a 9. Isolado numa função própria pra poder
+    ser chamado tanto no caminho normal quanto para RECALCULAR a intenção
+    durante um fluxo em andamento (ex: registro de pedido — ver bloco 0b).
+    """
     # ── 1. Regras por VERBO (alta prioridade — vencem regras por slot) ──
     # CRÍTICO 6: "cancelar" vem antes de "numero_pedido vira status"
     if re.search(r'\bcancelar\b|\bcancelamento\b', t):
