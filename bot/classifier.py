@@ -189,6 +189,57 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if slots_turno.get("prazo_desejado") and not produto and not quantidade:
         return "prazo_sem_contexto"
 
+    # ── 7b. Roteamento fino "produção vs outro setor" ─────────────
+    # Os setores (setor_*) têm peso 9, então uma pergunta de PRODUÇÃO que só
+    # menciona de passagem uma palavra de outro setor (envio, entrega, desconto,
+    # fornecedor) era puxada pra lá — mesmo existindo uma intenção NOSSA com
+    # resposta melhor. Aqui a gente segura essas na produção quando o contexto
+    # é claramente do nosso setor. (Obs: "veio com defeito" continua indo pra
+    # devoluções DE PROPÓSITO — a própria qualidade_defeito encaminha pra lá.)
+
+    # Cuidado POR TECIDO: "como cuido/lavo do jeans" → cuidados_jeans (não o
+    # catálogo de calças nem a composição). Exige verbo de cuidado + tecido.
+    if re.search(r'cuid|lav|conserv|encolh|desbot|amass|ferro', t):
+        for padrao, intent in (
+            (r'\balgodao', 'cuidados_algodao'), (r'\bviscose', 'cuidados_viscose'),
+            (r'\bpoliester', 'cuidados_poliester'), (r'\blinho', 'cuidados_linho'),
+            (r'\bjeans', 'cuidados_jeans'), (r'\bmoletom', 'cuidados_moletom'),
+            (r'\bmalha', 'cuidados_malha'), (r'\bla\b', 'cuidados_la'),
+        ):
+            if re.search(padrao, t):
+                return intent
+
+    # Envio de ARTE/arquivo pra personalização (não é logística de entrega).
+    if re.search(r'\b(arte|arquivo|layout|vetor|png|cdr|pdf|svg)\b', t) and \
+       re.search(r'envi|mand|form|aceit|resoluc', t):
+        return "personalizacao_envio_arte"
+
+    # Desconto por VOLUME → temos a tabela de progressão (não encaminha pra vendas).
+    if (re.search(r'desconto', t) and re.search(
+            r'volume|atacado|progressiv|quantidade|quanto mais|lote|por peca', t)) \
+       or re.search(r'quanto mais.*barato', t):
+        return "combinado_desconto_volume"
+
+    # Revenda/atacadista → condições de revenda (não vendas genérico).
+    if re.search(r'revend|atacadista|distribuidor|sacoleira', t):
+        return "revenda"
+
+    # Fornecedor/origem DO TECIDO → tec_origem (o setor de compras é pra quem
+    # quer VENDER material PRA gente, não pra quem pergunta de onde vem o nosso).
+    if re.search(r'(fornecedor|origem|de onde vem).{0,14}tecido|'
+                 r'tecido (nacional|importado)|tecelagem|malharia', t):
+        return "tec_origem"
+
+    # "pronta entrega" é termo de produção (trabalhamos sob demanda), não logística.
+    if re.search(r'pronta.?entrega|peca(s)? pronta|envio imediato', t):
+        if re.search(r'\bcor(es)?\b', t):
+            return "cores_basicas"
+        return "pronta_entrega"
+
+    # "prazo ... da produção/fabricação" é o nosso lead time, não prazo de envio.
+    if re.search(r'\bprazo\b', t) and re.search(r'produc|fabricac', t):
+        return "prazo_padrao"
+
     # ── 8. Palavras-chave do CSV (desempate por PESO) ─────────────
     # Antes era "a primeira intenção que bater vence". Agora coletamos TODAS as
     # intenções cuja palavra-chave aparece na frase e ficamos com a de MAIOR PESO.
