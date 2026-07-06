@@ -649,10 +649,11 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if filtro.empty:
             return f"Não tenho dados sobre {personalizacao} em {tecido}. Consulte o setor técnico."
         r = filtro.iloc[0]
-        return (
-            f"{personalizacao.title()} em {tecido.replace('_',' ')}: {r['compativel'].upper()}. "
-            f"{r['observacao']}"
-        )
+        obs = str(r["observacao"]).strip()
+        obs = obs[:1].upper() + obs[1:] if obs else obs
+        if r["compativel"].strip().lower() == "sim":
+            return f"Sim! {obs}"
+        return obs
 
     # ── Compatibilidade tecido × produto ─────────────────────────
     if intencao == "combinado_tecido_em_produto":
@@ -663,10 +664,11 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if filtro.empty:
             return f"Não tenho dados sobre {tecido} em {produto}. Consulte o setor técnico."
         r = filtro.iloc[0]
-        return (
-            f"{tecido.replace('_',' ').title()} em {produto.replace('_',' ')}: "
-            f"{r['compativel'].upper()}. {r['observacao']}"
-        )
+        obs = str(r["observacao"]).strip()
+        obs = obs[:1].upper() + obs[1:] if obs else obs
+        if r["compativel"].strip().lower() == "sim":
+            return f"Sim! {obs}"
+        return obs
 
     # ── Cor em tecido ────────────────────────────────────────────
     if intencao == "combinado_cor_em_tecido":
@@ -678,10 +680,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             return f"Não tenho dados sobre a cor {cor} em {tecido}. Consulte o setor de vendas."
         r = filtro.iloc[0]
         disp = "em estoque permanente" if r["disponibilidade"] == "estoque" else "sob demanda (mínimo 80 peças + 7 a 10 dias)"
-        return (
-            f"{cor.replace('_',' ').title()} em {tecido.replace('_',' ')}: {disp}. "
-            f"{r['observacao']}"
-        )
+        return f"A cor {cor.replace('_',' ')} em {tecido.replace('_',' ')} está {disp}."
 
     # ── Gramatura ────────────────────────────────────────────────
     if intencao == "combinado_gramatura_produto_uso":

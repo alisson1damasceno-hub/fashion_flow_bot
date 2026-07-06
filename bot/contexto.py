@@ -160,7 +160,7 @@ _DESPEDIDAS_EXATAS = {
 
 # Casuais — agradecimentos curtos e confirmações
 _CASUAIS = {
-    "blz", "beleza", "ok", "certo", "entendi", "sim", "nao", "legal",
+    "blz", "beleza", "ok", "certo", "entendi", "sim", "legal",
     "otimo", "perfeito", "ta", "massa", "show", "top",
     "obrigado", "obrigada", "obg", "valeu", "brigado", "brigada",
     "tmj", "tranquilo",
