@@ -98,25 +98,53 @@ def _fluxo_registrar(slots, sessao, mensagem):
 
 def _detectar_alteracao(mensagem, slots):
     """
-    Descobre qual campo o cliente quer mudar e para qual valor.
+    Descobre qual campo o cliente quer mudar e para qual valor novo.
     Retorna (campo, valor) ou (None, None) se não der pra inferir.
+
+    Duas regras que consertam o bug do "mudou de 'preto' para 'preto'":
+    - O valor NOVO é o que vem depois de "para/pra" — em "de algodão PARA linho",
+      o alvo é linho (o primeiro tecido citado costuma ser o valor ATUAL).
+    - Re-extrai da própria mensagem (sem herdar o contexto), senão pegava uma
+      cor/tecido velho da conversa e "alterava" pro mesmo valor.
     """
+    from bot.extractor import extrair_slots
+
     t = normalizar(mensagem)
-    if "cor" in t and slots.get("cor"):
-        return "cor", slots["cor"]
-    if "tamanho" in t and (slots.get("tamanho") or slots.get("grade")):
-        return "tamanho", slots.get("tamanho") or slots.get("grade")
-    if ("quantidade" in t or "quantas" in t) and slots.get("quantidade"):
-        return "quantidade", slots["quantidade"]
-    if "personaliza" in t and slots.get("personalizacao"):
-        return "personalizacao", slots["personalizacao"]
-    # Sem palavra-chave clara: tenta inferir pelo único slot presente.
-    if slots.get("cor"):
-        return "cor", slots["cor"]
-    if slots.get("quantidade"):
-        return "quantidade", slots["quantidade"]
-    if slots.get("personalizacao"):
-        return "personalizacao", slots["personalizacao"]
+    m_alvo = re.search(r'\b(?:para|pra|pro)\s+(.+)$', t)
+    alvo = extrair_slots(m_alvo.group(1)) if m_alvo else {}   # valor depois de "para"
+    aqui = extrair_slots(mensagem)                            # slots ditos AGORA (sem contexto)
+
+    def val(chave):
+        return alvo.get(chave) if alvo.get(chave) is not None else aqui.get(chave)
+
+    # 1. Campo dito por extenso na frase ("mudar o TECIDO para linho").
+    if "tecido" in t and val("tecido") is not None:
+        return "tecido", val("tecido")
+    if "cor" in t and val("cor") is not None:
+        return "cor", val("cor")
+    if "tamanho" in t and val("grade") is not None:
+        return "tamanho", val("grade")
+    if "quantidade" in t or "quantas" in t:
+        q = val("quantidade")
+        if q is None and m_alvo:            # "mudar a quantidade para 200" (sem unidade)
+            m_num = re.search(r'\d+', m_alvo.group(1))
+            q = int(m_num.group()) if m_num else None
+        if q is not None:
+            return "quantidade", q
+    if "personaliza" in t and val("personalizacao") is not None:
+        return "personalizacao", val("personalizacao")
+
+    # 2. Sem o nome do campo: infere pelo ALVO (o que vem depois de "para").
+    for campo, chave in (("tecido", "tecido"), ("cor", "cor"), ("quantidade", "quantidade"),
+                         ("personalizacao", "personalizacao"), ("tamanho", "grade")):
+        if alvo.get(chave) is not None:
+            return campo, alvo[chave]
+
+    # 3. Último recurso: um único slot dito na própria mensagem.
+    for campo, chave in (("tecido", "tecido"), ("cor", "cor"), ("quantidade", "quantidade"),
+                         ("personalizacao", "personalizacao")):
+        if aqui.get(chave) is not None:
+            return campo, aqui[chave]
     return None, None
 
 
@@ -429,7 +457,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 sessao["alteracao_pendente"] = None
             return (
                 f"O que você quer mudar no pedido {numero}? Posso alterar cor, tamanho, "
-                "quantidade ou personalização — e me diz pro quê. "
+                "quantidade, tecido ou personalização — e me diz pro quê. "
                 "Ex: 'mudar a cor para branco'."
             )
         resultado = atualizar.alterar_campo(numero, campo, valor, sessao.get("nome_cliente") if sessao else None)
