@@ -13,7 +13,9 @@ cancelar) — tudo pela conversa, usando arquivos **CSV** como base de conhecime
 - **Alisson Damasceno**
 - **Bernardo Mota**
 - **Márcia Beatriz Costa**
-- **Vinícius** (oreddd)
+- **Vinícius Vidal**
+- **Miguel Neto**
+- **Jackson Nogueira**
 
 ## ✨ O que ele faz
 
