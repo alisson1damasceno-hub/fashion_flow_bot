@@ -134,16 +134,29 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
             return sessao["ultimo_assunto"]
 
     # ── 6. Combinações por slot ───────────────────────────────────
+    # Só tratamos como pergunta de COMPATIBILIDADE/DISPONIBILIDADE se a frase
+    # tiver um sinal disso ("combina", "posso usar", "dá pra", "tem em"...).
+    # Senão, citar um tecido/cor junto de um produto é INFORMATIVO (não um
+    # veredito) — aí deixamos cair no catálogo/tecidos, que faz mais sentido.
+    sinal_compat = bool(re.search(
+        r'combina|casa com|harmoniza|da pra|posso |pode (usar|fazer|ser)|'
+        r'fica bo|serve|aceita|recomend|ideal|funciona|\be bom\b|vale a pena|'
+        r'adequad|compat|melhor tecido|qual tecido|\btem\b|disponiv|estoque', t
+    ))
+
     if slots_efetivos.get("tecido") and slots_efetivos.get("personalizacao") \
-       and (slots_turno.get("tecido") or slots_turno.get("personalizacao")):
+       and (slots_turno.get("tecido") or slots_turno.get("personalizacao")) \
+       and sinal_compat:
         return "combinado_personalizacao_em_tecido"
 
     if slots_efetivos.get("tecido") and produto \
-       and (slots_turno.get("tecido") or slots_turno.get("produto")):
+       and (slots_turno.get("tecido") or slots_turno.get("produto")) \
+       and sinal_compat:
         return "combinado_tecido_em_produto"
 
     if slots_efetivos.get("cor") and slots_efetivos.get("tecido") \
-       and (slots_turno.get("cor") or slots_turno.get("tecido")):
+       and (slots_turno.get("cor") or slots_turno.get("tecido")) \
+       and sinal_compat:
         return "combinado_cor_em_tecido"
 
     if produto and slots_efetivos.get("grade") and slots_turno.get("grade"):
@@ -203,5 +216,23 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
 
     if melhor_score >= 85:
         return melhor_intencao
+
+    # ── 10. Antes de desistir: se a pessoa citou um PRODUTO ou TECIDO (sem uma
+    # pergunta específica que casasse acima), mostramos o catálogo daquele
+    # produto / o menu de tecidos — bem mais útil que o fallback puro.
+    _CAT_POR_PRODUTO = {
+        "camiseta_basica": "cat_camisetas", "camiseta_premium": "cat_camisetas",
+        "polo": "cat_camisetas", "baby_look": "cat_camisetas",
+        "regata": "cat_camisetas", "oversized": "cat_camisetas",
+        "moletom": "cat_moletons", "jaqueta": "cat_moletons",
+        "calca_jeans": "cat_calcas", "calca_alfaiataria": "cat_calcas",
+        "legging": "cat_calcas", "bermuda": "cat_calcas", "jogger": "cat_calcas",
+        "vestido_midi": "cat_vestidos", "vestido_longo": "cat_vestidos",
+        "uniforme_polo": "cat_uniformes", "uniforme_jaleco": "cat_uniformes",
+    }
+    if produto in _CAT_POR_PRODUTO:
+        return _CAT_POR_PRODUTO[produto]
+    if slots_efetivos.get("tecido"):
+        return "tecidos"
 
     return "fallback"
