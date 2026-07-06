@@ -84,7 +84,22 @@ código do CRUD) e `RESUMO_APRESENTACAO_CRUD.txt` (roteiro de apresentação).
 
 ## ☁️ Deploy
 
-O backend é uma API FastAPI e precisa de um servidor que rode Python de forma
-persistente. Plataformas recomendadas: **Railway**, **Render** ou **Hugging Face
-Spaces** (o `Procfile` já está pronto). Ao hospedar, troque a URL no campo "API"
-da página pelo endereço público do servidor.
+O backend é uma API FastAPI que precisa de um **servidor persistente** (que fica
+rodando e escreve em disco) — porque o CRUD grava no `pedidos.csv` e a memória da
+conversa vive no processo. Plataformas recomendadas: **Render** (mais direto),
+**Hugging Face Spaces**, **Railway** ou **Fly.io**. O `Procfile` e o `render.yaml`
+já estão prontos, e a interface web detecta a URL da API sozinha.
+
+> ⚠️ **Vercel não serve** para este projeto: é *serverless* (sistema de arquivos
+> somente-leitura e sem estado entre requisições), então o CRUD não conseguiria
+> gravar no CSV e o bot perderia a memória da conversa.
+
+### Render (grátis)
+
+1. [render.com](https://render.com) → login com GitHub → **New +** → **Blueprint**.
+2. Conecte o repositório `fashion_flow_bot` — o Render lê o `render.yaml` e já
+   configura o build e o start. Clique em **Apply**.
+3. Aguarde o build (~2–3 min). Abra a URL gerada — o chat funciona sozinho.
+
+> No plano grátis o serviço dorme após ~15 min parado (a 1ª mensagem depois
+> demora ~30s) e o disco é efêmero (o `pedidos.csv` reseta ao reiniciar).

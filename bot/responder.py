@@ -315,7 +315,26 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 return row_sub.iloc[0]["resposta_padrao"]
             return f"Entendido! Registrei: {melhor_valor.replace('_', ' ')}. Como posso continuar te ajudando?"
 
-        # não entendeu — mostra o menu de novo
+        # Não casou nenhuma opção. Antes isso virava um beco-sem-saída ("Não
+        # entendi sua escolha" repetido) e o cliente ficava preso no menu. Agora
+        # a gente SAI do menu e trata a mensagem como uma pergunta nova — a pessoa
+        # provavelmente mudou de assunto ("me explica o silk") ou escolheu por
+        # uma frase que não é o rótulo exato ("tem vegano?"). Conserta o "menu sem saída".
+        from bot.extractor import extrair_slots
+        from bot.contexto import merge_com_contexto
+        from bot.classifier import classificar
+
+        if sessao:
+            sessao["aguardando_opcao"] = None
+        slots_novos = extrair_slots(mensagem, em_menu=False)
+        slots_ef = merge_com_contexto(slots_novos, sessao) if sessao else slots_novos
+        nova_intencao = classificar(mensagem, slots_novos, slots_ef, dados["intencoes"], sessao)
+        if nova_intencao not in ("selecao_opcao", "fallback"):
+            return responder(nova_intencao, slots_ef, dados, sessao, mensagem)
+
+        # Nem como pergunta nova deu — aí sim mostra o menu de novo pra ajudar.
+        if sessao:
+            sessao["aguardando_opcao"] = opcao_menu
         lista_opcoes = "\n".join(f"  {i+1}. {c.title()}" for i, c in enumerate(opcoes.keys()))
         return f"Não entendi sua escolha. Por favor, selecione uma opção:\n{lista_opcoes}"
 
@@ -649,10 +668,11 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if filtro.empty:
             return f"Não tenho dados sobre {personalizacao} em {tecido}. Consulte o setor técnico."
         r = filtro.iloc[0]
-        return (
-            f"{personalizacao.title()} em {tecido.replace('_',' ')}: {r['compativel'].upper()}. "
-            f"{r['observacao']}"
-        )
+        obs = str(r["observacao"]).strip()
+        obs = obs[:1].upper() + obs[1:] if obs else obs
+        if r["compativel"].strip().lower() == "sim":
+            return f"Sim! {obs}"
+        return obs
 
     # ── Compatibilidade tecido × produto ─────────────────────────
     if intencao == "combinado_tecido_em_produto":
@@ -663,10 +683,11 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if filtro.empty:
             return f"Não tenho dados sobre {tecido} em {produto}. Consulte o setor técnico."
         r = filtro.iloc[0]
-        return (
-            f"{tecido.replace('_',' ').title()} em {produto.replace('_',' ')}: "
-            f"{r['compativel'].upper()}. {r['observacao']}"
-        )
+        obs = str(r["observacao"]).strip()
+        obs = obs[:1].upper() + obs[1:] if obs else obs
+        if r["compativel"].strip().lower() == "sim":
+            return f"Sim! {obs}"
+        return obs
 
     # ── Cor em tecido ────────────────────────────────────────────
     if intencao == "combinado_cor_em_tecido":
@@ -678,10 +699,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             return f"Não tenho dados sobre a cor {cor} em {tecido}. Consulte o setor de vendas."
         r = filtro.iloc[0]
         disp = "em estoque permanente" if r["disponibilidade"] == "estoque" else "sob demanda (mínimo 80 peças + 7 a 10 dias)"
-        return (
-            f"{cor.replace('_',' ').title()} em {tecido.replace('_',' ')}: {disp}. "
-            f"{r['observacao']}"
-        )
+        return f"A cor {cor.replace('_',' ')} em {tecido.replace('_',' ')} está {disp}."
 
     # ── Gramatura ────────────────────────────────────────────────
     if intencao == "combinado_gramatura_produto_uso":
