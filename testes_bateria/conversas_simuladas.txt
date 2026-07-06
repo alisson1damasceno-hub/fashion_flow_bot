@@ -667,4 +667,4 @@ Qual produto você quer saber os tecidos disponíveis?
   🧑 quero cancelar o pedido FF-2026-0009
   🤖 [cancelar_pedido] Dora, Não encontrei o pedido FF-2026-0009. Confere o número?
   🧑 e a cor branca, tem?
-  🤖 [cat_camisetas] Dora, Linha de camisetas: básica (100% algodão, gola careca/V/polo), premium (algodão pima penteado), regata, baby look e oversized. Gramaturas de 140g a 220g. Todas as 12 cores em pronta entrega.
+  🤖 [saudacao] Dora, Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?
