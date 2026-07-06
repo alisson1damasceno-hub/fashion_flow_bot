@@ -240,6 +240,23 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if re.search(r'\bprazo\b', t) and re.search(r'produc|fabricac', t):
         return "prazo_padrao"
 
+    # ── 7c. Tópico perguntado vence o substantivo de produto ──────
+    # "qual o prazo de uma camiseta" / "quais tamanhos de polo" caíam no CATÁLOGO
+    # do produto (cat_* pesa 6; o menu do tópico pesa 4). Se a pessoa cita um
+    # produto mas o que ela PERGUNTA é prazo/tamanho/urgência, respondemos o tópico.
+    # (Fica DEPOIS das regras compostas: "prazo de 100 camisetas" com quantidade
+    # já virou combinado lá em cima; grade explícita já virou tamanho_em_produto.)
+    # (b2b de uniforme empresarial — "uniforme pra empresa com logo e prazo" —
+    # não entra aqui: é pedido completo, tratado adiante.)
+    contexto_b2b = bool(re.search(r'empresa|b2b|logo', t))
+    if produto and not contexto_b2b:
+        if re.search(r'\bprazo\b|quando fica|quanto tempo', t):
+            return "prazo_padrao"
+        if re.search(r'\btamanhos?\b|\bgrade\b|\bnumeracao\b', t):
+            return "personalizacao_tamanhos"
+        if slots_efetivos.get("urgente"):
+            return "prazo_urgente"
+
     # ── 8. Palavras-chave do CSV (desempate por PESO) ─────────────
     # Antes era "a primeira intenção que bater vence". Agora coletamos TODAS as
     # intenções cuja palavra-chave aparece na frase e ficamos com a de MAIOR PESO.
