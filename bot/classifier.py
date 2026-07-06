@@ -304,6 +304,11 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
             # O match exato dessas já foi feito na etapa 8; aqui elas só dão ruído.
             if len(kw) < 4:
                 continue
+            # Mensagem MUITO mais curta que a keyword? Pula. Senão um token solto
+            # casa 100% dentro de uma keyword composta ("preto" dentro de "tem
+            # vestido preto") e cai numa intenção combinada sem os slots (→ "em None").
+            if len(t) < len(kw) * 0.6:
+                continue
             score = fuzz.partial_ratio(kw, t)
             # vence o maior score; se empatar no score, vence o maior peso
             if score > melhor_score or (score == melhor_score and peso > melhor_peso):

@@ -3,7 +3,7 @@ saudacao,oi,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fa
 saudacao,ola,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
 saudacao,opa,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
 saudacao,eai,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
-saudacao,e ai,saudacao_girias1,OK,,Fala mano! Tô aqui pra te ajudar com a produção da Fashion Flow. Manda o papo!
+saudacao,e ai,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
 saudacao,bom dia,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
 saudacao,boa tarde,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
 saudacao,boa noite,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
@@ -21,7 +21,7 @@ saudacao,oi td bem,saudacao,OK,,"Olá! Eu sou o assistente do setor de produçã
 saudacao_giria,mano,saudacao_girias1,OK,,Fala mano! Tô aqui pra te ajudar com a produção da Fashion Flow. Manda o papo!
 saudacao_giria,bro,saudacao_girias1,OK,,Fala mano! Tô aqui pra te ajudar com a produção da Fashion Flow. Manda o papo!
 saudacao_giria,fala ai,saudacao_girias1,OK,,Fala mano! Tô aqui pra te ajudar com a produção da Fashion Flow. Manda o papo!
-saudacao_giria,e ai parceiro,saudacao_girias1,OK,,Fala mano! Tô aqui pra te ajudar com a produção da Fashion Flow. Manda o papo!
+saudacao_giria,e ai parceiro,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
 saudacao_giria,salve mano,saudacao,OK,,"Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?"
 saudacao_giria,diva,saudacao_girias2,OK,,"Manda a boa, mana! Sou o bot da produção da Fashion Flow, em que posso ajudar?"
 saudacao_giria,amiga,saudacao_girias2,OK,,"Manda a boa, mana! Sou o bot da produção da Fashion Flow, em que posso ajudar?"

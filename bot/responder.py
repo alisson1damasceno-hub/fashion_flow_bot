@@ -721,10 +721,20 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
     if intencao == "combinado_cor_em_tecido":
         cor = slots.get("cor")
         tecido = slots.get("tecido")
+        # Sem tecido (ou sem cor) não dá pra consultar a matriz cor×tecido — e a
+        # gente NÃO pode responder "... em None". A pessoa provavelmente só citou
+        # uma cor: mostramos a paleta em estoque (cores_basicas).
+        if not tecido or not cor:
+            linha = dados["intencoes"][dados["intencoes"]["id_intencao"] == "cores_basicas"]
+            if not linha.empty:
+                return linha.iloc[0]["resposta_padrao"]
+            return ("Me diz a cor e o tecido (ex: 'preto em algodão') que eu confiro a "
+                    "disponibilidade — ou pergunta pelas cores em estoque.")
         df = dados["cor_tecido"]
         filtro = df[(df["tecido"] == tecido) & (df["cor"] == cor)]
         if filtro.empty:
-            return f"Não tenho dados sobre a cor {cor} em {tecido}. Consulte o setor de vendas."
+            return (f"Não tenho dados sobre a cor {cor.replace('_',' ')} em "
+                    f"{tecido.replace('_',' ')}. Consulte o setor de vendas.")
         r = filtro.iloc[0]
         disp = "em estoque permanente" if r["disponibilidade"] == "estoque" else "sob demanda (mínimo 80 peças + 7 a 10 dias)"
         return f"A cor {cor.replace('_',' ')} em {tecido.replace('_',' ')} está {disp}."
