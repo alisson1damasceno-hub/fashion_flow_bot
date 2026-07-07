@@ -58,6 +58,11 @@ def main():
             print(f"  foco_atual: {sessao['foco_atual']}")
             print(f"  ultimo_assunto: {sessao['ultimo_assunto']}")
             print(f"  aguardando_opcao: {sessao['aguardando_opcao']}")
+            print(f"  intencao_escolhida: {sessao.get('intencao_escolhida')}  "
+                  f"(confianca {sessao.get('confianca')})")
+            print(f"  candidatas (re-ranking por score):")
+            for c in sessao.get("intencao_candidatas", []):
+                print(f"    {c['score']:.3f}  {c['intencao']}  (por {c['por']})")
             print(f"  historico ({len(sessao['historico_turnos'])} turnos):")
             for i, t in enumerate(sessao["historico_turnos"][-5:], 1):
                 print(f"    {i}. [{t['intencao']}] {t['msg']!r}")

@@ -60,6 +60,10 @@ def criar_sessao():
         "estado_conversa": "OCIOSO",     # ONDE estamos no diálogo
         "objetivo_usuario": None,        # O QUE o usuário quer (meta grande)
         "ultimo_assunto": None,
+        # ── score de confiança / re-ranking (ver classifier.pontuar_candidatas) ──
+        "intencao_candidatas": [],       # top intenções com score, do último turno
+        "confianca": 0.0,                # score da intenção mais forte
+        "intencao_escolhida": None,      # a que o bot REALMENTE usou (regra pode ter recalculado)
         "ativa": False,
     }
 
@@ -136,6 +140,11 @@ def atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, respo
     # ultimo_assunto: ignora seleções de menu (preserva o assunto real anterior)
     if intencao != "selecao_opcao":
         sessao["ultimo_assunto"] = intencao
+
+    # a intenção que o bot DE FATO usou (pode divergir da candidata de maior score
+    # quando uma regra recalcula — ex: "comprar moto": score aponta vendas, regra
+    # de negação escolhe cat_nao_fazemos).
+    sessao["intencao_escolhida"] = intencao
 
     sessao["ativa"] = True
 

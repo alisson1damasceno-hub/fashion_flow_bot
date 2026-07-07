@@ -95,6 +95,9 @@ def get_sessao(sessao_id: str):
         "foco_atual": s["foco_atual"],
         "ultimo_assunto": s["ultimo_assunto"],
         "aguardando_opcao": s["aguardando_opcao"],
+        "intencao_escolhida": s.get("intencao_escolhida"),
+        "confianca": s.get("confianca"),
+        "intencao_candidatas": s.get("intencao_candidatas", []),
         "qtd_turnos": len(s["historico_turnos"]),
         "historico": s["historico_turnos"],
     }

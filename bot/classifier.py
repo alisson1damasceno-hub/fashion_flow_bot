@@ -33,6 +33,46 @@ def item_fora_catalogo(texto):
     return m.group(0) if m else None
 
 
+def pontuar_candidatas(mensagem, intencoes, top=3):
+    """
+    Score de CONFIANÇA das intenções — o "recalcular a intenção" que o professor
+    pediu. Pontua TODAS as intenções (palavra-chave + fuzzy, ponderado pelo peso)
+    e devolve as `top` mais fortes, RE-RANQUEADAS por score.
+
+    - match exato de palavra-chave (fronteira de palavra) → força 1.0
+    - senão, similaridade fuzzy (0 a 1)
+    - score final = força × (0.6 + 0.4 × peso/9)  → dá pra ver quão "certo" o bot está.
+
+    É transparência/decisão: o classificar() calcula isso todo turno e guarda na
+    sessão, e o /contexto (terminal) e /sessao (web) mostram as candidatas.
+    """
+    t = normalizar(mensagem)
+    ranking = []
+    for _, row in intencoes.iterrows():
+        keywords = str(row["palavras_chave"]).strip()
+        if not keywords or keywords == "nan":
+            continue
+        peso = _peso(row)
+        melhor, tipo = 0.0, None
+        for kw in keywords.split("|"):
+            kw = normalizar(kw.strip())
+            if not kw:
+                continue
+            padrao = (r'\b' + re.escape(kw)) if kw[0].isalnum() else re.escape(kw)
+            if re.search(padrao, t):
+                melhor, tipo = 1.0, "palavra-chave"
+                break
+            if len(kw) >= 4 and len(t) >= len(kw) * 0.5:
+                sc = fuzz.partial_ratio(kw, t) / 100.0
+                if sc > melhor:
+                    melhor, tipo = sc, "similaridade"
+        if melhor > 0:
+            score = round(melhor * (0.6 + 0.4 * peso / 9.0), 3)
+            ranking.append({"intencao": row["id_intencao"], "score": score, "por": tipo})
+    ranking.sort(key=lambda c: c["score"], reverse=True)
+    return ranking[:top]
+
+
 def _peso(row):
     """
     Lê o PESO da intenção (coluna 'peso' do intencoes.csv). É o número que
@@ -51,6 +91,13 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     Retorna o id da intenção classificada.
     """
     t = normalizar(mensagem)
+
+    # Score de confiança / re-ranking das intenções — guardado na sessão pra o
+    # /contexto e /sessao mostrarem (o "recalcular a intenção" pedido em sala).
+    if sessao is not None:
+        candidatas = pontuar_candidatas(mensagem, intencoes)
+        sessao["intencao_candidatas"] = candidatas
+        sessao["confianca"] = candidatas[0]["score"] if candidatas else 0.0
 
     # ── 0. Aguardando opção de menu ──────────────────────────────
     if sessao and sessao.get("aguardando_opcao"):
