@@ -80,10 +80,34 @@ def _valor_campo(mensagem, campo):
     return None
 
 
-def _fluxo_registrar(slots, sessao, mensagem):
+def _responder_duvida_no_pedido(mensagem, dados):
+    """
+    Responde uma PERGUNTA feita no meio do registro (ex: "me fala da premium",
+    "quais cores tem", "quanto custa"). Devolve a resposta, ou None se não for
+    uma dúvida clara (aí o fluxo só re-pergunta o campo).
+
+    Classifica/responde com sessao=None: sem o estado do registro (senão voltaria
+    pro próprio registrar_pedido) e sem herdar os slots do pedido em andamento.
+    """
+    from bot.classifier import classificar
+    from bot.extractor import extrair_slots
+
+    st = extrair_slots(mensagem)
+    intent = classificar(mensagem, st, st, dados["intencoes"], None)
+    # Essas não são "dúvidas para responder e voltar": ou é ruído, ou mexeria no
+    # próprio pedido (aí a gente só re-pergunta o campo).
+    if intent in ("fallback", "registrar_pedido", "finalizar_pedidos", "selecao_opcao",
+                  "cancelar_pedido", "alterar_pedido_especifico", "alterar_pedido",
+                  "status_pedido"):
+        return None
+    return responder(intent, st, dados, None, mensagem)
+
+
+def _fluxo_registrar(slots, sessao, mensagem, dados=None):
     """
     CREATE conversacional: coleta os campos do pedido ao longo da conversa e,
     quando tudo está preenchido, chama criar.registrar_pedido (que grava no CSV).
+    `dados` é usado pra responder dúvidas feitas no meio do registro.
     """
     if sessao is None:
         return "Não consegui iniciar o registro agora."
@@ -97,19 +121,22 @@ def _fluxo_registrar(slots, sessao, mensagem):
     primeiro = sessao.get("registro_pedido") is None
     reg = sessao.get("registro_pedido") or {}
 
-    # 1. Aproveita qualquer campo que o extractor reconheceu nesta mensagem.
-    for campo in CAMPOS_REGISTRO:
-        if slots.get(campo) not in (None, ""):
-            reg[campo] = slots[campo]
-
-    # 2. Se estávamos esperando um campo específico e o extractor não pegou,
-    #    VALIDA o texto cru (ex: "M" p/ tamanho, "nenhuma" p/ personalização). Se
-    #    não for um valor plausível (ex: o cliente perguntou outra coisa), NÃO grava
-    #    — marca como inválido pra re-perguntar, em vez de virar lixo no pedido.
+    # 1-2. Preenche os campos.
     pendente = sessao.get("registro_campo_pendente")
     invalido = False
-    if pendente and not reg.get(pendente) and not primeiro:
-        valor = _valor_campo(mensagem, pendente)
+    if primeiro:
+        # No PRIMEIRO turno, aproveita tudo que o extractor reconheceu
+        # (pré-preenche produto/quantidade/cor/tecido de "quero 100 camisas de linho").
+        for campo in CAMPOS_REGISTRO:
+            if slots.get(campo) not in (None, ""):
+                reg[campo] = slots[campo]
+    elif pendente and not reg.get(pendente):
+        # Nos turnos seguintes a gente pergunta UM campo por vez → só preenche ESSE
+        # campo. (Assim uma pergunta solta no meio — "me fala da premium" — não troca
+        # o produto do pedido sem querer.) Valida: se não for um valor plausível,
+        # marca inválido pra responder a dúvida e re-perguntar (não grava lixo).
+        valor = slots.get(pendente) if slots.get(pendente) not in (None, "") \
+            else _valor_campo(mensagem, pendente)
         if valor:
             reg[pendente] = valor
         else:
@@ -124,9 +151,14 @@ def _fluxo_registrar(slots, sessao, mensagem):
         sessao["registro_campo_pendente"] = proximo
         intro = ""
         if invalido and proximo == pendente:
-            # o cliente respondeu algo que não serve pro campo (ex: fez outra
-            # pergunta no meio do pedido) → re-pergunta, sem gravar lixo.
-            return (f"Hmm, isso não parece {ROTULO_CAMPO.get(pendente, 'uma resposta válida')}. "
+            # O cliente não respondeu o campo — provavelmente fez uma PERGUNTA no
+            # meio do pedido. O professor cobra: NÃO deixar dúvida sem resposta.
+            # Então respondemos a dúvida e VOLTAMOS pro pedido, re-perguntando.
+            duvida = _responder_duvida_no_pedido(mensagem, dados) if dados else None
+            volta = f"Voltando ao seu pedido — {PERGUNTAS_REGISTRO[proximo]}"
+            if duvida:
+                return f"{duvida}\n\n{volta}"
+            return (f"Não entendi isso como {ROTULO_CAMPO.get(pendente, 'resposta')}. "
                     f"{PERGUNTAS_REGISTRO[proximo]} (ou digite 'cancelar' pra sair do pedido)")
         if primeiro:
             # confirma o que já entendeu no pedido (ex: "100x camiseta em linho")
@@ -236,7 +268,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
 
     # ── CREATE: registrar pedido (coleta os campos ao longo da conversa) ──
     if intencao == "registrar_pedido":
-        return _fluxo_registrar(slots, sessao, mensagem)
+        return _fluxo_registrar(slots, sessao, mensagem, dados)
 
     # ── Fecha a "sacola": o cliente não quer mais produtos ───────
     if intencao == "finalizar_pedidos":

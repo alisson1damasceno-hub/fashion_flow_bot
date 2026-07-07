@@ -251,17 +251,23 @@ CENARIO 08 — varios com personalizacao
   🧑 bordado
   🤖 [registrar_pedido] Sam, Vamos registrar seu pedido! Qual produto você quer produzir? (ex: camiseta, polo, moletom, vestido...)
   🧑 mais 50 camisetas com silk
-  🤖 [registrar_pedido] Sam, Qual cor? (ex: preto, branco, marinho, vermelho...)
+  🤖 [registrar_pedido] Sam, Quantas peças?
   🧑 preto
-  🤖 [registrar_pedido] Sam, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
+  🤖 [registrar_pedido] Sam, Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 M
-  🤖 [registrar_pedido] Sam, Qual tecido? (ex: algodão, algodão pima, moletom flanelado, viscose...)
+  🤖 [registrar_pedido] Sam, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 algodao
-  🤖 [registrar_pedido] Sam, Pedido registrado! Seu número é FF-2026-0021. Resumo: 50 x camiseta basica preto, tamanho M, em algodao basico, personalização: silkscreen. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Sam, Não tenho dados sobre None em algodao_basico. Consulte o setor técnico.
+
+Voltando ao seu pedido — Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 silk
-  🤖 [registrar_pedido] Sam, Vamos registrar seu pedido! Qual produto você quer produzir? (ex: camiseta, polo, moletom, vestido...)
+  🤖 [registrar_pedido] Sam, Silkscreen (serigrafia) é a técnica tradicional de estampa. Ideal para tiragens acima de 30 peças (melhor custo por peça). Trabalha bem com até 6 cores por arte (cada cor é uma tela). Estampa muito resistente à lavagem. Setup leva 2 dias úteis e a produção em si 3 a 5 dias.
+
+Voltando ao seu pedido — Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 era so
-  🤖 [registrar_pedido] Sam, Hmm, isso não parece um produto. Qual produto você quer produzir? (ex: camiseta, polo, moletom, vestido...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Sam, Foi um prazer te ajudar! Qualquer coisa, é só voltar a falar comigo. Até mais!
+
+Voltando ao seu pedido — Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
 
 ======================================================================
 CENARIO 09 — finaliza logo (1 so)
@@ -279,9 +285,9 @@ CENARIO 09 — finaliza logo (1 so)
   🧑 algodao
   🤖 [registrar_pedido] Rita, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Rita, Pedido registrado! Seu número é FF-2026-0022. Resumo: 100 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Rita, Pedido registrado! Seu número é FF-2026-0021. Resumo: 100 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Rita, Fechado! Seu pedido FF-2026-0022 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Rita, Fechado! Seu pedido FF-2026-0021 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 10 — 4 produtos seguidos
@@ -299,7 +305,7 @@ CENARIO 10 — 4 produtos seguidos
   🧑 algodao
   🤖 [registrar_pedido] Gu, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0023. Resumo: 30 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0022. Resumo: 30 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 30 polos
   🤖 [registrar_pedido] Boa, anotei: 30x polo. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 branco
@@ -309,7 +315,7 @@ CENARIO 10 — 4 produtos seguidos
   🧑 algodao
   🤖 [registrar_pedido] Gu, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0024. Resumo: 30 x polo branco, tamanho G, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0023. Resumo: 30 x polo branco, tamanho G, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 30 regatas
   🤖 [registrar_pedido] Boa, anotei: 30x regata. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 azul
@@ -319,7 +325,7 @@ CENARIO 10 — 4 produtos seguidos
   🧑 algodao
   🤖 [registrar_pedido] Gu, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0025. Resumo: 30 x regata royal, tamanho P, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0024. Resumo: 30 x regata royal, tamanho P, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 30 moletons
   🤖 [registrar_pedido] Boa, anotei: 30x moletom. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 cinza
@@ -329,7 +335,7 @@ CENARIO 10 — 4 produtos seguidos
   🧑 moletom flanelado
   🤖 [registrar_pedido] Gu, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0026. Resumo: 30 x moletom cinza mescla, tamanho GG, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0025. Resumo: 30 x moletom cinza mescla, tamanho GG, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 finalizar
   🤖 [(despedida)] Até logo!
 
@@ -349,7 +355,7 @@ CENARIO 11 — mistura infantil
   🧑 algodao
   🤖 [registrar_pedido] Bel, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Bel, Pedido registrado! Seu número é FF-2026-0027. Resumo: 50 x camiseta basica amarelo, tamanho infantil, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Bel, Pedido registrado! Seu número é FF-2026-0026. Resumo: 50 x camiseta basica amarelo, tamanho infantil, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 mais 20 moletons infantil
   🤖 [registrar_pedido] Bel, Boa, anotei: 20x moletom. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 rosa
@@ -359,11 +365,11 @@ CENARIO 11 — mistura infantil
   🧑 moletom flanelado
   🤖 [registrar_pedido] Bel, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Bel, Pedido registrado! Seu número é FF-2026-0028. Resumo: 20 x moletom rosa, tamanho infantil, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Bel, Pedido registrado! Seu número é FF-2026-0027. Resumo: 20 x moletom rosa, tamanho infantil, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
   🤖 [finalizar_pedidos] Bel, Fechado! Registrei estes pedidos nesta conversa:
-  • FF-2026-0027 — 50x camiseta basica
-  • FF-2026-0028 — 20x moletom
+  • FF-2026-0026 — 50x camiseta basica
+  • FF-2026-0027 — 20x moletom
 Guarde os números pra acompanhar cada um. 😊
 
 ======================================================================
@@ -382,9 +388,9 @@ CENARIO 12 — plus size no pedido
   🧑 algodao
   🤖 [registrar_pedido] Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0029. Resumo: 40 x camiseta basica preto, tamanho plus_size, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0028. Resumo: 40 x camiseta basica preto, tamanho plus_size, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Nal, Fechado! Seu pedido FF-2026-0029 (40x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Nal, Fechado! Seu pedido FF-2026-0028 (40x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 13 — pergunta produtos no meio
@@ -396,15 +402,23 @@ CENARIO 13 — pergunta produtos no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Ceu, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 quais outros produtos tem
-  🤖 [registrar_pedido] Ceu, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Ceu, A Fashion Flow tem várias linhas. Qual te interessa?
+  1. Escolha uma opção: Camisetas e básicas
+  2. Moletons e jaquetas
+  3. Calças e shorts
+  4. Vestidos
+  5. Uniformes corporativos
+  6. Linha infantil
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Ceu, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Ceu, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Ceu, Pedido registrado! Seu número é FF-2026-0030. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Ceu, Pedido registrado! Seu número é FF-2026-0029. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Ceu, Fechado! Seu pedido FF-2026-0030 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Ceu, Fechado! Seu pedido FF-2026-0029 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 14 — pergunta preco no meio
@@ -416,15 +430,17 @@ CENARIO 14 — pergunta preco no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Duda, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 quanto custa
-  🤖 [registrar_pedido] Duda, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Duda, Para informações sobre valores, formas de pagamento, descontos e fechamento de pedido, vou te encaminhar ao chatbot de vendas: (inserir link).
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Duda, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Duda, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Duda, Pedido registrado! Seu número é FF-2026-0031. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Duda, Pedido registrado! Seu número é FF-2026-0030. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Duda, Fechado! Seu pedido FF-2026-0031 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Duda, Fechado! Seu pedido FF-2026-0030 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 15 — pergunta prazo no meio
@@ -436,15 +452,22 @@ CENARIO 15 — pergunta prazo no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Edu, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 qual o prazo
-  🤖 [registrar_pedido] Edu, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Edu, Sobre prazos da produção, qual sua dúvida?
+  1. Escolha uma opção: Prazo padrão
+  2. Com personalização
+  3. Pedido urgente
+  4. Pedido grande (500+)
+  5. Atraso de pedido
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Edu, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Edu, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Edu, Pedido registrado! Seu número é FF-2026-0032. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Edu, Pedido registrado! Seu número é FF-2026-0031. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Edu, Fechado! Seu pedido FF-2026-0032 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Edu, Fechado! Seu pedido FF-2026-0031 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 16 — pergunta cor disponivel no meio
@@ -456,15 +479,21 @@ CENARIO 16 — pergunta cor disponivel no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Fael, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 quais cores tem
-  🤖 [registrar_pedido] Fael, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Fael, Sobre cores, o que você quer saber?
+  1. Escolha uma opção: Cores básicas em estoque
+  2. Tingimento sob demanda
+  3. Combinação cor peça/estampa
+  4. Limite de cores por técnica
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Fael, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Fael, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Fael, Pedido registrado! Seu número é FF-2026-0033. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Fael, Pedido registrado! Seu número é FF-2026-0032. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Fael, Fechado! Seu pedido FF-2026-0033 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Fael, Fechado! Seu pedido FF-2026-0032 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 17 — pergunta tecido no meio
@@ -476,15 +505,17 @@ CENARIO 17 — pergunta tecido no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 quais tecidos
-  🤖 [registrar_pedido] Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Gi, Trabalhamos com: algodão (básico, penteado, pima), poliéster (incluindo rPET reciclado), viscose, linho, malha mista, moletom flanelado e peluciado, suplex, dry fit, lã, jeans (várias gramaturas) e tencel. Não trabalhamos com couro animal nem seda convencional.
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Gi, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Gi, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0034. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0033. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Fechado! Seu pedido FF-2026-0034 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Fechado! Seu pedido FF-2026-0033 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 18 — resposta sem sentido no campo
@@ -496,15 +527,23 @@ CENARIO 18 — resposta sem sentido no campo
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Hel, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 sei la
-  🤖 [registrar_pedido] Hel, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Hel, Sobre tecidos, o que você quer saber?
+  1. Escolha uma opção: Lista de tecidos disponíveis
+  2. Composição de cada peça
+  3. Origem dos tecidos
+  4. Sugestão por uso
+  5. Tecido para pele sensível
+  6. Não trabalhamos com
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Hel, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Hel, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Hel, Pedido registrado! Seu número é FF-2026-0035. Resumo: 100 x camiseta basica preto, tamanho M, em la, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Hel, Pedido registrado! Seu número é FF-2026-0034. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Hel, Fechado! Seu pedido FF-2026-0035 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Hel, Fechado! Seu pedido FF-2026-0034 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 19 — digita numero no lugar da cor
@@ -516,15 +555,15 @@ CENARIO 19 — digita numero no lugar da cor
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Ian, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 12345
-  🤖 [registrar_pedido] Ian, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Ian, Não entendi isso como uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
   🧑 preto
   🤖 [registrar_pedido] Ian, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Ian, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Ian, Pedido registrado! Seu número é FF-2026-0036. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Ian, Pedido registrado! Seu número é FF-2026-0035. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Ian, Fechado! Seu pedido FF-2026-0036 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Ian, Fechado! Seu pedido FF-2026-0035 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 20 — pergunta sobre premium no meio
@@ -536,15 +575,17 @@ CENARIO 20 — pergunta sobre premium no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Ju, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 me fala da premium
-  🤖 [registrar_pedido] Ju, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Ju, Camiseta Premium: Algodão pima penteado — toque mais macio, fio mais fino e maior durabilidade que a básica. (Categoria: Camisetas.)
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Ju, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Ju, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Ju, Pedido registrado! Seu número é FF-2026-0037. Resumo: 100 x camiseta premium preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Ju, Pedido registrado! Seu número é FF-2026-0036. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Ju, Fechado! Seu pedido FF-2026-0037 (100x camiseta premium) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Ju, Fechado! Seu pedido FF-2026-0036 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 21 — saudacao no meio
@@ -556,15 +597,17 @@ CENARIO 21 — saudacao no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Kau, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 oi tudo bem
-  🤖 [registrar_pedido] Kau, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Kau, Olá! Eu sou o assistente do setor de produção da Fashion Flow. Posso te ajudar com dúvidas sobre processos, tecidos, personalização, qualidade, sustentabilidade, cuidados com a peça e prazos. Sobre o que você quer saber?
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Kau, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Kau, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Kau, Pedido registrado! Seu número é FF-2026-0038. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Kau, Pedido registrado! Seu número é FF-2026-0037. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Kau, Fechado! Seu pedido FF-2026-0038 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Kau, Fechado! Seu pedido FF-2026-0037 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 22 — pergunta manutencao no meio
@@ -576,15 +619,17 @@ CENARIO 22 — pergunta manutencao no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Lia, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 como lavar
-  🤖 [registrar_pedido] Lia, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Lia, Lavagem recomendada: máquina em ciclo delicado, água fria (até 30°C), peças do avesso e separadas por cor. Para peças com estampa, sempre do avesso. Não deixe peças molhadas amontoadas — pode manchar.
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Lia, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Lia, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Lia, Pedido registrado! Seu número é FF-2026-0039. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Lia, Pedido registrado! Seu número é FF-2026-0038. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Lia, Fechado! Seu pedido FF-2026-0039 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Lia, Fechado! Seu pedido FF-2026-0038 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 23 — tanto faz na cor e no tecido
@@ -602,9 +647,9 @@ CENARIO 23 — tanto faz na cor e no tecido
   🧑 tanto faz
   🤖 [registrar_pedido] Mel, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Mel, Pedido registrado! Seu número é FF-2026-0040. Resumo: 80 x camiseta basica a definir, tamanho M, em a definir, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Mel, Pedido registrado! Seu número é FF-2026-0039. Resumo: 80 x camiseta basica a definir, tamanho M, em a definir, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Mel, Fechado! Seu pedido FF-2026-0040 (80x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Mel, Fechado! Seu pedido FF-2026-0039 (80x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 24 — pergunta e depois responde certo
@@ -616,7 +661,9 @@ CENARIO 24 — pergunta e depois responde certo
   🧑 quero 90 polos
   🤖 [registrar_pedido] ना, Boa, anotei: 90x polo. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 voces entregam?
-  🤖 [registrar_pedido] ना, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] ना, Para informações sobre entrega, frete, rastreamento e prazos de envio, vou te encaminhar ao chatbot de logística: (inserir link).
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 branco
   🤖 [registrar_pedido] ना, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 G
@@ -624,9 +671,9 @@ CENARIO 24 — pergunta e depois responde certo
   🧑 algodao
   🤖 [registrar_pedido] ना, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] ना, Pedido registrado! Seu número é FF-2026-0041. Resumo: 90 x polo branco, tamanho G, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] ना, Pedido registrado! Seu número é FF-2026-0040. Resumo: 90 x polo branco, tamanho G, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] ना, Fechado! Seu pedido FF-2026-0041 (90x polo) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] ना, Fechado! Seu pedido FF-2026-0040 (90x polo) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 25 — elogio no meio
@@ -638,15 +685,17 @@ CENARIO 25 — elogio no meio
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Ori, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 voce e otimo
-  🤖 [registrar_pedido] Ori, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Ori, Aaah, muito obrigada pelo elogio! Fico feliz em ajudar. Qualquer outra dúvida, é só chamar.
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 preto
   🤖 [registrar_pedido] Ori, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Ori, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Ori, Pedido registrado! Seu número é FF-2026-0042. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Ori, Pedido registrado! Seu número é FF-2026-0041. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Ori, Fechado! Seu pedido FF-2026-0042 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Ori, Fechado! Seu pedido FF-2026-0041 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 26 — cancela no comeco
@@ -706,9 +755,9 @@ CENARIO 29 — cancela e comeca de novo
   🧑 algodao
   🤖 [registrar_pedido] Th, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Th, Pedido registrado! Seu número é FF-2026-0043. Resumo: 30 x polo branco, tamanho G, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Th, Pedido registrado! Seu número é FF-2026-0042. Resumo: 30 x polo branco, tamanho G, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Th, Fechado! Seu pedido FF-2026-0043 (30x polo) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Th, Fechado! Seu pedido FF-2026-0042 (30x polo) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 30 — cancela pedido ja existente (dono)
@@ -758,7 +807,7 @@ CENARIO 33 — cancela no meio do 2o produto
   🧑 algodao
   🤖 [registrar_pedido] Bru, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Bru, Pedido registrado! Seu número é FF-2026-0044. Resumo: 50 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Bru, Pedido registrado! Seu número é FF-2026-0043. Resumo: 50 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 mais 30 polos
   🤖 [registrar_pedido] Bru, Boa, anotei: 30x polo. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 cancelar
@@ -780,7 +829,7 @@ CENARIO 34 — cancela e finaliza o que tinha
   🧑 algodao
   🤖 [registrar_pedido] Cau, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Cau, Pedido registrado! Seu número é FF-2026-0045. Resumo: 50 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Cau, Pedido registrado! Seu número é FF-2026-0044. Resumo: 50 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 sim
   🤖 [registrar_pedido] Cau, Vamos registrar seu pedido! Qual produto você quer produzir? (ex: camiseta, polo, moletom, vestido...)
   🧑 desistir
@@ -934,9 +983,9 @@ CENARIO 45 — registra e ja quer alterar
   🧑 algodao
   🤖 [registrar_pedido] Yas, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Yas, Pedido registrado! Seu número é FF-2026-0046. Resumo: 50 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Yas, Pedido registrado! Seu número é FF-2026-0045. Resumo: 50 x camiseta basica preto, tamanho M, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Yas, Fechado! Seu pedido FF-2026-0046 (50x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Yas, Fechado! Seu pedido FF-2026-0045 (50x camiseta basica) está registrado. É só acompanhar pelo número. 😊
   🧑 quero mudar a cor pra branco
   🤖 [alterar_pedido_especifico] Yas, Pra alterar, me informa o número do pedido (FF-AAAA-NNNN). Lembrando: só dá pra alterar enquanto está na etapa de modelagem.
 
@@ -976,7 +1025,9 @@ CENARIO 47 — muda de ideia no produto
   🧑 quero 100 camisetas
   🤖 [registrar_pedido] Ben, Boa, anotei: 100x camiseta basica. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 na verdade quero moletons
-  🤖 [registrar_pedido] Ben, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Ben, Linha de moletons: flanelado (inverno), peluciado (meia estação), com capuz, sem capuz, com zíper (jaqueta moletom). Também jaqueta corta-vento e jaqueta puffer. Gramaturas de 280g a 380g.
+
+Voltando ao seu pedido — Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 cinza
   🤖 [registrar_pedido] Ben, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 G
@@ -984,9 +1035,9 @@ CENARIO 47 — muda de ideia no produto
   🧑 moletom flanelado
   🤖 [registrar_pedido] Ben, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Ben, Pedido registrado! Seu número é FF-2026-0047. Resumo: 100 x moletom cinza mescla, tamanho G, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Ben, Pedido registrado! Seu número é FF-2026-0046. Resumo: 100 x camiseta basica cinza mescla, tamanho G, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Ben, Fechado! Seu pedido FF-2026-0047 (100x moletom) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Ben, Fechado! Seu pedido FF-2026-0046 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 48 — pergunta status no meio de registro
@@ -998,15 +1049,15 @@ CENARIO 48 — pergunta status no meio de registro
   🧑 quero 100 camisas de linho
   🤖 [registrar_pedido] Ci, Boa, anotei: 100x camiseta basica, em linho. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 qual o status do meu pedido
-  🤖 [registrar_pedido] Ci, Hmm, isso não parece uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
+  🤖 [registrar_pedido] Ci, Não entendi isso como uma cor. Qual cor? (ex: preto, branco, marinho, vermelho...) (ou digite 'cancelar' pra sair do pedido)
   🧑 preto
   🤖 [registrar_pedido] Ci, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 M
   🤖 [registrar_pedido] Ci, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0048. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Pedido registrado! Seu número é FF-2026-0047. Resumo: 100 x camiseta basica preto, tamanho M, em linho, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Ci, Fechado! Seu pedido FF-2026-0048 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Ci, Fechado! Seu pedido FF-2026-0047 (100x camiseta basica) está registrado. É só acompanhar pelo número. 😊
 
 ======================================================================
 CENARIO 49 — registra, status, novo pedido
@@ -1024,9 +1075,9 @@ CENARIO 49 — registra, status, novo pedido
   🧑 algodao
   🤖 [registrar_pedido] Ana, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Ana, Pedido registrado! Seu número é FF-2026-0049. Resumo: 20 x polo branco, tamanho G, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Ana, Pedido registrado! Seu número é FF-2026-0048. Resumo: 20 x polo branco, tamanho G, em algodao basico, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
   🧑 nao
-  🤖 [finalizar_pedidos] Ana, Fechado! Seu pedido FF-2026-0049 (20x polo) está registrado. É só acompanhar pelo número. 😊
+  🤖 [finalizar_pedidos] Ana, Fechado! Seu pedido FF-2026-0048 (20x polo) está registrado. É só acompanhar pelo número. 😊
   🧑 qual o status do FF-2026-0003
   🤖 [status_pedido] Ana, Pedido FF-2026-0003: 200 x polo branco, tamanho GG. Esse pedido está CANCELADO. Previsão de término na produção: 2026-07-02. (O status de entrega quem informa é a logística.)
   🧑 FF-2026-0003
