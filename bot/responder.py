@@ -148,6 +148,16 @@ def _detectar_alteracao(mensagem, slots):
     return None, None
 
 
+def _reafirma_produtos(dados):
+    """Lista as CATEGORIAS de produtos que a Fashion Flow faz (tabela produtos.csv)."""
+    df = dados["produtos"]
+    ativos = df[df["ativo"].astype(str).str.strip().str.lower() == "sim"]
+    cats = list(dict.fromkeys(ativos["categoria"].tolist()))   # únicas, na ordem
+    if len(cats) > 1:
+        return ", ".join(cats[:-1]) + " e " + cats[-1]
+    return cats[0] if cats else ""
+
+
 def responder(intencao, slots, dados, sessao=None, mensagem=""):
     """
     Retorna a resposta em texto para o usuário.
@@ -789,6 +799,26 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             f"Grade {grade.replace('_',' ')} para {produto.replace('_',' ')}: {disp}. "
             f"{r['observacao']}"
         )
+
+    # ── Fora do catálogo: NEGA e REAFIRMA o que a gente faz ──────
+    # (o professor pediu esse comportamento com o exemplo da "moto".)
+    if intencao == "cat_nao_fazemos":
+        from bot.classifier import item_fora_catalogo
+        item = item_fora_catalogo(mensagem)
+        nega = (f"Não trabalhamos com {item} — " if item
+                else "Isso não faz parte do que a gente produz — ")
+        return (nega + "a Fashion Flow é uma confecção de vestuário. Nós fazemos: "
+                f"{_reafirma_produtos(dados)}. Quer saber de algum desses?")
+
+    # ── Detalhe de um produto específico (ex: "premium") ─────────
+    if intencao == "produto_detalhe":
+        produto = slots.get("produto")
+        linha = dados["produtos"][dados["produtos"]["produto"] == produto]
+        if linha.empty:
+            return (f"A Fashion Flow faz: {_reafirma_produtos(dados)}. "
+                    "Sobre qual você quer saber?")
+        r = linha.iloc[0]
+        return f"{r['nome']}: {r['descricao']}. (Categoria: {r['categoria']}.)"
 
     # ── Resposta padrão do CSV (menus etc) ───────────────────────
     df_int = dados["intencoes"]

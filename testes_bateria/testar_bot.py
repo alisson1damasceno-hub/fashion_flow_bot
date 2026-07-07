@@ -68,7 +68,7 @@ MAPA = {
                  "producao_tecnologia", "producao_equipe", "producao_modelagem",
                  "producao_corte_costura"},
     "catalogo": {"catalogo", "cat_camisetas", "cat_moletons", "cat_calcas", "cat_vestidos",
-                 "cat_uniformes", "cat_infantil", "cat_nao_fazemos"},
+                 "cat_uniformes", "cat_infantil", "cat_nao_fazemos", "produto_detalhe"},
     "sugestao_produto": {"sugestao_produto", "sug_casual", "sug_trabalho", "sug_esporte",
                         "sug_festa", "sug_inverno", "sug_verao", "sug_uniforme", "sug_presente"},
     "tecidos": {"tecidos", "tec_disponiveis", "tec_composicao", "tec_origem", "tec_pele_sensivel",

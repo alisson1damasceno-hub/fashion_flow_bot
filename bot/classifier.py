@@ -15,6 +15,24 @@ from rapidfuzz import fuzz
 from bot.normalizar import normalizar
 
 
+# Itens que a Fashion Flow claramente NÃO faz (fora de vestuário). Serve pra o bot
+# NEGAR e reafirmar o catálogo — o professor pediu isso com o exemplo da "moto".
+FORA_CATALOGO = (
+    r'\b(motos?|carros?|veiculos?|automoveis?|bicicletas?|bikes?|patins|skates?|'
+    r'sapatos?|tenis|sandalias?|chinelos?|botas?|calcados?|salto|'
+    r'bolsas?|mochilas?|carteiras?|cintos?|oculos|relogios?|joias?|aneis|colares?|brincos?|'
+    r'celulares?|telefones?|computadores?|notebooks?|tablets?|eletronicos?|geladeiras?|'
+    r'fogao|fogoes|microondas|televisao|tvs?|moveis|movel|sofas?|'
+    r'remedios?|brinquedos?|drones?|pneus?|armas?|foguetes?)\b'
+)
+
+
+def item_fora_catalogo(texto):
+    """Devolve o item fora do catálogo citado na mensagem (ex: 'moto'), ou None."""
+    m = re.search(FORA_CATALOGO, normalizar(texto))
+    return m.group(0) if m else None
+
+
 def _peso(row):
     """
     Lê o PESO da intenção (coluna 'peso' do intencoes.csv). É o número que
@@ -83,6 +101,12 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
                  r'etapa d[oae] (meu )?pedido|saiu do corte|foi para a costura|'
                  r'esta no corte|esta na costura|meu lote', t):
         return "status_pedido"
+
+    # ── 1b. Pediram algo FORA do catálogo (moto, sapato, geladeira...) ──
+    # Vem cedo, ANTES de "comprar" cair em vendas: o bot precisa NEGAR e reafirmar
+    # o que a gente faz, não encaminhar pra vendas nem dar fallback.
+    if re.search(FORA_CATALOGO, t):
+        return "cat_nao_fazemos"
 
     # ── 2. Regras por slot DO TURNO ATUAL ─────────────────────────
     # CRÍTICO 5: numero_pedido só dispara se foi mencionado AGORA,
@@ -256,6 +280,11 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
             return "personalizacao_tamanhos"
         if slots_efetivos.get("urgente"):
             return "prazo_urgente"
+
+    # "premium" (a camiseta premium) → detalhe do produto (da tabela produtos.csv),
+    # não o catálogo inteiro de camisetas repetido.
+    if produto == "camiseta_premium" and re.search(r'\bpremium\b', t):
+        return "produto_detalhe"
 
     # "qual/quais tecido(s) pra <produto>" → lista os tecidos que combinam com o
     # produto. Só quando NENHUM tecido específico foi citado (senão "camiseta de

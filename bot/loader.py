@@ -11,6 +11,7 @@ def carregar_dados():
     """
     tabelas = {
         "intencoes":                    "intencoes.csv",
+        "produtos":                     "produtos.csv",
         "slots":                        "slots.csv",
         "prazo":                        "lookup_prazo.csv",
         "preco":                        "lookup_preco.csv",

@@ -54,6 +54,7 @@ PRODUTOS = [
     ("uniformes?", "uniforme_polo"),
     ("jalecos?", "uniforme_jaleco"),
     ("oversized", "oversized"),
+    ("premium", "camiseta_premium"),   # "premium" sozinho = a camiseta premium
 ]
 
 # ── Personalizações ────────────────────────────────────────────────
