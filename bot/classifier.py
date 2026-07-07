@@ -351,6 +351,10 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
             return "prazo_padrao"
         if re.search(r'\btamanhos?\b|\bgrade\b|\bnumeracao\b', t):
             return "personalizacao_tamanhos"
+        # "como cuido/lavo da camiseta" (cuidado do PRODUTO, sem tecido citado)
+        # → menu de manutenção, não o catálogo do produto.
+        if re.search(r'\bcuid\w+|\blav\w+|\bconserv\w+|\bencolh\w+|\bdesbot\w+', t):
+            return "manutencao"
         if slots_efetivos.get("urgente"):
             return "prazo_urgente"
 

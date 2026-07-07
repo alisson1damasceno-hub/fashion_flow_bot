@@ -155,7 +155,10 @@ def _fluxo_registrar(slots, sessao, mensagem, dados=None):
             # meio do pedido. O professor cobra: NÃO deixar dúvida sem resposta.
             # Então respondemos a dúvida e VOLTAMOS pro pedido, re-perguntando.
             duvida = _responder_duvida_no_pedido(mensagem, dados) if dados else None
-            volta = f"Voltando ao seu pedido — {PERGUNTAS_REGISTRO[proximo]}"
+            # nudge GENTIL (não atropela): responde a dúvida e lembra do pedido
+            # sem exigir, deixando o cliente perguntar quantas coisas quiser.
+            volta = (f"Sem pressa 🙂 — quando quiser seguir com o pedido, "
+                     f"{PERGUNTAS_REGISTRO[proximo][0].lower()}{PERGUNTAS_REGISTRO[proximo][1:]}")
             if duvida:
                 return f"{duvida}\n\n{volta}"
             return (f"Não entendi isso como {ROTULO_CAMPO.get(pendente, 'resposta')}. "
