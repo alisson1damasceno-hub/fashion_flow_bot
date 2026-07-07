@@ -33,26 +33,81 @@ PERGUNTAS_REGISTRO = {
 ABORTAR_REGISTRO = {"cancelar", "parar", "sair", "deixa pra la", "esquece", "esquecer", "desistir"}
 
 
-def _valor_cru(mensagem, campo):
+# Rótulo amigável de cada campo, pra mensagem de "isso não parece X".
+ROTULO_CAMPO = {
+    "produto": "um produto", "quantidade": "uma quantidade", "cor": "uma cor",
+    "tamanho": "um tamanho", "tecido": "um tecido", "personalizacao": "uma personalização",
+}
+
+
+def _valor_campo(mensagem, campo):
     """
-    Quando o extractor não reconhece a resposta do campo perguntado, usamos o
-    texto cru da mensagem. Para 'quantidade', pegamos só o primeiro número.
+    VALIDA a resposta do cliente para o campo perguntado no registro. Devolve o
+    valor se for plausível, ou None se não for (aí o bot re-pergunta em vez de
+    gravar lixo). Conserta o bug de "quais outros produtos tem" virar a cor.
+
+    Obs: cor/tecido/personalização específicos já vêm pelo EXTRACTOR (passo 1 do
+    fluxo). Aqui a gente só trata o texto cru: número, tamanho, 'nenhuma' e
+    'tanto faz'. Cor/tecido arbitrário NÃO é aceito cru (o extractor conhece o
+    vocabulário — se não pegou, não é uma cor/tecido válido).
     """
-    t = (mensagem or "").strip()
+    t = normalizar((mensagem or "").strip())
+    if not t:
+        return None
+    indiferente = bool(re.search(r'tanto faz|qualquer|indiferente|voce (que )?escolh|'
+                                 r'nao sei|o (mais )?comum|padrao', t))
     if campo == "quantidade":
         m = re.search(r"\d+", t)
         return m.group(0) if m else None
     if campo == "tamanho":
-        # Tamanhos curtos (P, M, G, GG, XGG) ficam em maiúsculo; grades por
-        # extenso (infantil, plus size) ficam em minúsculo.
-        return t.upper() if len(t) <= 3 else normalizar(t)
-    return normalizar(t) or None
+        if re.search(r'plus|g1|g2|g3|g4', t):
+            return "plus_size"
+        if re.search(r'infantil|crianca|kids', t):
+            return "infantil"
+        m = re.fullmatch(r'(pp|p|m|g|gg|xgg)', t.replace(" ", ""))
+        if m:
+            return m.group(0).upper()
+        if "adulto" in t or indiferente:
+            return "adulto"
+        return None
+    if campo == "personalizacao":
+        if re.search(r'nenhuma|sem person|sem estamp|nao quero nada|\bnenhum\b|'
+                     r'\bnao\b|\bsem\b', t) or indiferente:
+            return "nenhuma"
+        return None   # silk/dtf/bordado vêm pelo extractor
+    if campo in ("cor", "tecido"):
+        return "a definir" if indiferente else None
+    return None
 
 
-def _fluxo_registrar(slots, sessao, mensagem):
+def _responder_duvida_no_pedido(mensagem, dados):
+    """
+    Responde uma PERGUNTA feita no meio do registro (ex: "me fala da premium",
+    "quais cores tem", "quanto custa"). Devolve a resposta, ou None se não for
+    uma dúvida clara (aí o fluxo só re-pergunta o campo).
+
+    Classifica/responde com sessao=None: sem o estado do registro (senão voltaria
+    pro próprio registrar_pedido) e sem herdar os slots do pedido em andamento.
+    """
+    from bot.classifier import classificar
+    from bot.extractor import extrair_slots
+
+    st = extrair_slots(mensagem)
+    intent = classificar(mensagem, st, st, dados["intencoes"], None)
+    # Essas não são "dúvidas para responder e voltar": ou é ruído, ou mexeria no
+    # próprio pedido (aí a gente só re-pergunta o campo).
+    if intent in ("fallback", "registrar_pedido", "finalizar_pedidos", "selecao_opcao",
+                  "cancelar_pedido", "alterar_pedido_especifico", "alterar_pedido",
+                  "status_pedido"):
+        return None
+    return responder(intent, st, dados, None, mensagem)
+
+
+def _fluxo_registrar(slots, sessao, mensagem, dados=None):
     """
     CREATE conversacional: coleta os campos do pedido ao longo da conversa e,
     quando tudo está preenchido, chama criar.registrar_pedido (que grava no CSV).
+    `dados` é usado pra responder dúvidas feitas no meio do registro.
     """
     if sessao is None:
         return "Não consegui iniciar o registro agora."
@@ -66,18 +121,26 @@ def _fluxo_registrar(slots, sessao, mensagem):
     primeiro = sessao.get("registro_pedido") is None
     reg = sessao.get("registro_pedido") or {}
 
-    # 1. Aproveita qualquer campo que o extractor reconheceu nesta mensagem.
-    for campo in CAMPOS_REGISTRO:
-        if slots.get(campo) not in (None, ""):
-            reg[campo] = slots[campo]
-
-    # 2. Se estávamos esperando um campo específico e o extractor não pegou,
-    #    usa o texto cru da resposta (ex: "M" para tamanho, "nenhuma" p/ personalização).
+    # 1-2. Preenche os campos.
     pendente = sessao.get("registro_campo_pendente")
-    if pendente and not reg.get(pendente) and not primeiro:
-        cru = _valor_cru(mensagem, pendente)
-        if cru:
-            reg[pendente] = cru
+    invalido = False
+    if primeiro:
+        # No PRIMEIRO turno, aproveita tudo que o extractor reconheceu
+        # (pré-preenche produto/quantidade/cor/tecido de "quero 100 camisas de linho").
+        for campo in CAMPOS_REGISTRO:
+            if slots.get(campo) not in (None, ""):
+                reg[campo] = slots[campo]
+    elif pendente and not reg.get(pendente):
+        # Nos turnos seguintes a gente pergunta UM campo por vez → só preenche ESSE
+        # campo. (Assim uma pergunta solta no meio — "me fala da premium" — não troca
+        # o produto do pedido sem querer.) Valida: se não for um valor plausível,
+        # marca inválido pra responder a dúvida e re-perguntar (não grava lixo).
+        valor = slots.get(pendente) if slots.get(pendente) not in (None, "") \
+            else _valor_campo(mensagem, pendente)
+        if valor:
+            reg[pendente] = valor
+        else:
+            invalido = True
 
     sessao["registro_pedido"] = reg
 
@@ -86,38 +149,110 @@ def _fluxo_registrar(slots, sessao, mensagem):
     if faltando:
         proximo = faltando[0]
         sessao["registro_campo_pendente"] = proximo
-        intro = "Vamos registrar seu pedido! " if primeiro else ""
+        intro = ""
+        if invalido and proximo == pendente:
+            # O cliente não respondeu o campo — provavelmente fez uma PERGUNTA no
+            # meio do pedido. O professor cobra: NÃO deixar dúvida sem resposta.
+            # Então respondemos a dúvida e VOLTAMOS pro pedido, re-perguntando.
+            duvida = _responder_duvida_no_pedido(mensagem, dados) if dados else None
+            # nudge GENTIL (não atropela): responde a dúvida e lembra do pedido
+            # sem exigir, deixando o cliente perguntar quantas coisas quiser.
+            volta = (f"Sem pressa 🙂 — quando quiser seguir com o pedido, "
+                     f"{PERGUNTAS_REGISTRO[proximo][0].lower()}{PERGUNTAS_REGISTRO[proximo][1:]}")
+            if duvida:
+                return f"{duvida}\n\n{volta}"
+            return (f"Não entendi isso como {ROTULO_CAMPO.get(pendente, 'resposta')}. "
+                    f"{PERGUNTAS_REGISTRO[proximo]} (ou digite 'cancelar' pra sair do pedido)")
+        if primeiro:
+            # confirma o que já entendeu no pedido (ex: "100x camiseta em linho")
+            partes = []
+            if reg.get("quantidade") and reg.get("produto"):
+                partes.append(f"{reg['quantidade']}x {reg['produto'].replace('_', ' ')}")
+            elif reg.get("produto"):
+                partes.append(reg["produto"].replace("_", " "))
+            if reg.get("cor"):
+                partes.append(reg["cor"].replace("_", " "))
+            if reg.get("tecido"):
+                partes.append("em " + reg["tecido"].replace("_", " "))
+            resumo = ", ".join(partes)
+            intro = (f"Boa, anotei: {resumo}. Vou registrar seu pedido — só faltam "
+                     "alguns dados. " if resumo else "Vamos registrar seu pedido! ")
         return intro + PERGUNTAS_REGISTRO[proximo]
 
-    # 4. Completou → grava no CSV e encerra o fluxo de registro.
+    # 4. Completou a coleta DESTE item → guarda no CARRINHO (ainda NÃO grava;
+    #    o pedido só fecha quando o cliente disser que não quer mais produtos —
+    #    aí vira UM pedido só, com vários itens).
     sessao["registro_campo_pendente"] = None
     sessao["registro_pedido"] = None
-    reg["cliente"] = sessao.get("nome_cliente", "")   # o dono é o nome da conversa
-    return criar.registrar_pedido(reg)["mensagem"]
+    sessao.setdefault("carrinho", []).append(dict(reg))
+    sessao["aguardando_mais_produto"] = True
+    n = len(sessao["carrinho"])
+    resumo = f"{reg.get('quantidade')}x {str(reg.get('produto', '')).replace('_', ' ')} " \
+             f"{str(reg.get('cor', '')).replace('_', ' ')}".strip()
+    return (f"Anotei o item {n}: {resumo}. Quer adicionar mais algum produto a esse "
+            "pedido? (me diz o próximo, ou 'não' pra fechar o pedido)")
 
 
 def _detectar_alteracao(mensagem, slots):
     """
-    Descobre qual campo o cliente quer mudar e para qual valor.
+    Descobre qual campo o cliente quer mudar e para qual valor novo.
     Retorna (campo, valor) ou (None, None) se não der pra inferir.
+
+    Duas regras que consertam o bug do "mudou de 'preto' para 'preto'":
+    - O valor NOVO é o que vem depois de "para/pra" — em "de algodão PARA linho",
+      o alvo é linho (o primeiro tecido citado costuma ser o valor ATUAL).
+    - Re-extrai da própria mensagem (sem herdar o contexto), senão pegava uma
+      cor/tecido velho da conversa e "alterava" pro mesmo valor.
     """
+    from bot.extractor import extrair_slots
+
     t = normalizar(mensagem)
-    if "cor" in t and slots.get("cor"):
-        return "cor", slots["cor"]
-    if "tamanho" in t and (slots.get("tamanho") or slots.get("grade")):
-        return "tamanho", slots.get("tamanho") or slots.get("grade")
-    if ("quantidade" in t or "quantas" in t) and slots.get("quantidade"):
-        return "quantidade", slots["quantidade"]
-    if "personaliza" in t and slots.get("personalizacao"):
-        return "personalizacao", slots["personalizacao"]
-    # Sem palavra-chave clara: tenta inferir pelo único slot presente.
-    if slots.get("cor"):
-        return "cor", slots["cor"]
-    if slots.get("quantidade"):
-        return "quantidade", slots["quantidade"]
-    if slots.get("personalizacao"):
-        return "personalizacao", slots["personalizacao"]
+    m_alvo = re.search(r'\b(?:para|pra|pro)\s+(.+)$', t)
+    alvo = extrair_slots(m_alvo.group(1)) if m_alvo else {}   # valor depois de "para"
+    aqui = extrair_slots(mensagem)                            # slots ditos AGORA (sem contexto)
+
+    def val(chave):
+        return alvo.get(chave) if alvo.get(chave) is not None else aqui.get(chave)
+
+    # 1. Campo dito por extenso na frase ("mudar o TECIDO para linho").
+    if "tecido" in t and val("tecido") is not None:
+        return "tecido", val("tecido")
+    if "cor" in t and val("cor") is not None:
+        return "cor", val("cor")
+    if "tamanho" in t and val("grade") is not None:
+        return "tamanho", val("grade")
+    if "quantidade" in t or "quantas" in t:
+        q = val("quantidade")
+        if q is None and m_alvo:            # "mudar a quantidade para 200" (sem unidade)
+            m_num = re.search(r'\d+', m_alvo.group(1))
+            q = int(m_num.group()) if m_num else None
+        if q is not None:
+            return "quantidade", q
+    if "personaliza" in t and val("personalizacao") is not None:
+        return "personalizacao", val("personalizacao")
+
+    # 2. Sem o nome do campo: infere pelo ALVO (o que vem depois de "para").
+    for campo, chave in (("tecido", "tecido"), ("cor", "cor"), ("quantidade", "quantidade"),
+                         ("personalizacao", "personalizacao"), ("tamanho", "grade")):
+        if alvo.get(chave) is not None:
+            return campo, alvo[chave]
+
+    # 3. Último recurso: um único slot dito na própria mensagem.
+    for campo, chave in (("tecido", "tecido"), ("cor", "cor"), ("quantidade", "quantidade"),
+                         ("personalizacao", "personalizacao")):
+        if aqui.get(chave) is not None:
+            return campo, aqui[chave]
     return None, None
+
+
+def _reafirma_produtos(dados):
+    """Lista as CATEGORIAS de produtos que a Fashion Flow faz (tabela produtos.csv)."""
+    df = dados["produtos"]
+    ativos = df[df["ativo"].astype(str).str.strip().str.lower() == "sim"]
+    cats = list(dict.fromkeys(ativos["categoria"].tolist()))   # únicas, na ordem
+    if len(cats) > 1:
+        return ", ".join(cats[:-1]) + " e " + cats[-1]
+    return cats[0] if cats else ""
 
 
 def responder(intencao, slots, dados, sessao=None, mensagem=""):
@@ -128,7 +263,18 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
 
     # ── CREATE: registrar pedido (coleta os campos ao longo da conversa) ──
     if intencao == "registrar_pedido":
-        return _fluxo_registrar(slots, sessao, mensagem)
+        return _fluxo_registrar(slots, sessao, mensagem, dados)
+
+    # ── Fecha o pedido: grava o CARRINHO como UM pedido só (vários itens) ──
+    if intencao == "finalizar_pedidos":
+        carrinho = (sessao or {}).get("carrinho", [])
+        if sessao is not None:
+            sessao["aguardando_mais_produto"] = False
+            sessao["carrinho"] = []
+        if not carrinho:
+            return "Beleza! Qualquer coisa é só chamar. 😊"
+        cliente = (sessao or {}).get("nome_cliente", "")
+        return criar.registrar_pedido_lote(carrinho, cliente)["mensagem"]
 
     # ── Seleção de menu ──────────────────────────────────────────
     if intencao == "selecao_opcao":
@@ -288,11 +434,11 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 if sessao:
                     # MÉDIO 15: não persiste no foco_atual; só limpa o menu.
                     sessao["aguardando_opcao"] = None
-                df_int = dados["intencoes"]
-                row_sub = df_int[df_int["id_intencao"] == escolha]
-                if not row_sub.empty:
-                    return row_sub.iloc[0]["resposta_padrao"]
-                return f"Entendido! Registrei: {escolha.replace('_', ' ')}. Como posso continuar te ajudando?"
+                # Renderiza a sub-intenção COMPLETA (recursa no responder). Se ela
+                # tiver um submenu próprio (ex: "tipos de personalização" → os 5
+                # tipos), o submenu aparece. Antes voltava só o texto e o submenu
+                # ficava sem opções ("Qual te interessa?" sem listar nada).
+                return responder(escolha, {}, dados, sessao, mensagem)
         except (ValueError, TypeError):
             pass
 
@@ -309,11 +455,17 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if melhor_score >= 75:
             if sessao:
                 sessao["aguardando_opcao"] = None
-            df_int = dados["intencoes"]
-            row_sub = df_int[df_int["id_intencao"] == melhor_valor]
-            if not row_sub.empty:
-                return row_sub.iloc[0]["resposta_padrao"]
-            return f"Entendido! Registrei: {melhor_valor.replace('_', ' ')}. Como posso continuar te ajudando?"
+            return responder(melhor_valor, {}, dados, sessao, mensagem)
+
+        # "quais são / me mostra as opções / não sei / lista" dentro de um menu →
+        # RE-MOSTRA as opções (em vez de escapar pra fallback ou 'sobre o bot').
+        t_norm = normalizar(mensagem)
+        if re.search(r'\bquais\b|\bquantos\b|\bqual\b.*\b(sao|são|opc|tipo)|'
+                     r'opcoe?s|op[çc][aã]o|me mostra|\bmostra\b|\blista\b|'
+                     r'nao sei|não sei|me ajuda|\btodas\b|\btodos\b', t_norm):
+            lista_opcoes = "\n".join(f"  {i+1}. {c.title()}"
+                                     for i, c in enumerate(opcoes.keys()))
+            return f"Claro! As opções são:\n{lista_opcoes}"
 
         # Não casou nenhuma opção. Antes isso virava um beco-sem-saída ("Não
         # entendi sua escolha" repetido) e o cliente ficava preso no menu. Agora
@@ -429,7 +581,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 sessao["alteracao_pendente"] = None
             return (
                 f"O que você quer mudar no pedido {numero}? Posso alterar cor, tamanho, "
-                "quantidade ou personalização — e me diz pro quê. "
+                "quantidade, tecido ou personalização — e me diz pro quê. "
                 "Ex: 'mudar a cor para branco'."
             )
         resultado = atualizar.alterar_campo(numero, campo, valor, sessao.get("nome_cliente") if sessao else None)
@@ -689,14 +841,41 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             return f"Sim! {obs}"
         return obs
 
+    # ── Quais tecidos combinam com um produto ────────────────────
+    # (Antes esse id tinha uma resposta PLACEHOLDER de dev no CSV — "Consultar
+    # lookup... e listar". Agora lista de verdade os tecidos compatíveis.)
+    if intencao == "combinado_tecidos_disponiveis_para_produto":
+        produto = slots.get("produto")
+        if not produto:
+            return ("Pra qual produto? (ex: camiseta, moletom, calça, vestido...) "
+                    "Aí eu listo os tecidos que combinam.")
+        df = dados["compat_tecido_produto"]
+        compat = df[(df["produto"] == produto)
+                    & (df["compativel"].str.strip().str.lower() == "sim")]
+        if compat.empty:
+            return (f"Não tenho tecidos cadastrados como ideais para "
+                    f"{produto.replace('_',' ')}. Consulte o setor técnico.")
+        tecidos = ", ".join(t.replace("_", " ") for t in compat["tecido"].tolist())
+        return f"Para {produto.replace('_',' ')}, os tecidos recomendados são: {tecidos}."
+
     # ── Cor em tecido ────────────────────────────────────────────
     if intencao == "combinado_cor_em_tecido":
         cor = slots.get("cor")
         tecido = slots.get("tecido")
+        # Sem tecido (ou sem cor) não dá pra consultar a matriz cor×tecido — e a
+        # gente NÃO pode responder "... em None". A pessoa provavelmente só citou
+        # uma cor: mostramos a paleta em estoque (cores_basicas).
+        if not tecido or not cor:
+            linha = dados["intencoes"][dados["intencoes"]["id_intencao"] == "cores_basicas"]
+            if not linha.empty:
+                return linha.iloc[0]["resposta_padrao"]
+            return ("Me diz a cor e o tecido (ex: 'preto em algodão') que eu confiro a "
+                    "disponibilidade — ou pergunta pelas cores em estoque.")
         df = dados["cor_tecido"]
         filtro = df[(df["tecido"] == tecido) & (df["cor"] == cor)]
         if filtro.empty:
-            return f"Não tenho dados sobre a cor {cor} em {tecido}. Consulte o setor de vendas."
+            return (f"Não tenho dados sobre a cor {cor.replace('_',' ')} em "
+                    f"{tecido.replace('_',' ')}. Consulte o setor de vendas.")
         r = filtro.iloc[0]
         disp = "em estoque permanente" if r["disponibilidade"] == "estoque" else "sob demanda (mínimo 80 peças + 7 a 10 dias)"
         return f"A cor {cor.replace('_',' ')} em {tecido.replace('_',' ')} está {disp}."
@@ -735,6 +914,26 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             f"{r['observacao']}"
         )
 
+    # ── Fora do catálogo: NEGA e REAFIRMA o que a gente faz ──────
+    # (o professor pediu esse comportamento com o exemplo da "moto".)
+    if intencao == "cat_nao_fazemos":
+        from bot.classifier import item_fora_catalogo
+        item = item_fora_catalogo(mensagem)
+        nega = (f"Não trabalhamos com {item} — " if item
+                else "Isso não faz parte do que a gente produz — ")
+        return (nega + "a Fashion Flow é uma confecção de vestuário. Nós fazemos: "
+                f"{_reafirma_produtos(dados)}. Quer saber de algum desses?")
+
+    # ── Detalhe de um produto específico (ex: "premium") ─────────
+    if intencao == "produto_detalhe":
+        produto = slots.get("produto")
+        linha = dados["produtos"][dados["produtos"]["produto"] == produto]
+        if linha.empty:
+            return (f"A Fashion Flow faz: {_reafirma_produtos(dados)}. "
+                    "Sobre qual você quer saber?")
+        r = linha.iloc[0]
+        return f"{r['nome']}: {r['descricao']}. (Categoria: {r['categoria']}.)"
+
     # ── Resposta padrão do CSV (menus etc) ───────────────────────
     df_int = dados["intencoes"]
     row = df_int[df_int["id_intencao"] == intencao]
@@ -746,6 +945,9 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 if sessao:
                     sessao["aguardando_opcao"] = f"menu_{intencao}"
                 opcoes = str(followup).split("|")
+                # tira o rótulo "Escolha uma opção:" que veio colado na 1ª opção
+                opcoes[0] = re.sub(r'(?i)^\s*escolha uma op[çc][aã]o:\s*', '',
+                                   opcoes[0]).strip()
                 lista = "\n".join(f"  {i+1}. {o.strip()}" for i, o in enumerate(opcoes))
                 return f"{resposta}\n{lista}"
             return f"{resposta}\n{followup}"

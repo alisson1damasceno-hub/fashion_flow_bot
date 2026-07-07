@@ -15,6 +15,64 @@ from rapidfuzz import fuzz
 from bot.normalizar import normalizar
 
 
+# Itens que a Fashion Flow claramente NÃO faz (fora de vestuário). Serve pra o bot
+# NEGAR e reafirmar o catálogo — o professor pediu isso com o exemplo da "moto".
+FORA_CATALOGO = (
+    r'\b(motos?|carros?|veiculos?|automoveis?|bicicletas?|bikes?|patins|skates?|'
+    r'sapatos?|tenis|sandalias?|chinelos?|botas?|calcados?|salto|'
+    r'bolsas?|mochilas?|carteiras?|cintos?|oculos|relogios?|joias?|aneis|colares?|brincos?|'
+    r'celulares?|telefones?|computadores?|notebooks?|tablets?|eletronicos?|geladeiras?|'
+    r'fogao|fogoes|microondas|televisao|tvs?|moveis|movel|sofas?|'
+    r'remedios?|brinquedos?|drones?|pneus?|armas?|foguetes?)\b'
+)
+
+
+def item_fora_catalogo(texto):
+    """Devolve o item fora do catálogo citado na mensagem (ex: 'moto'), ou None."""
+    m = re.search(FORA_CATALOGO, normalizar(texto))
+    return m.group(0) if m else None
+
+
+def pontuar_candidatas(mensagem, intencoes, top=3):
+    """
+    Score de CONFIANÇA das intenções — o "recalcular a intenção" que o professor
+    pediu. Pontua TODAS as intenções (palavra-chave + fuzzy, ponderado pelo peso)
+    e devolve as `top` mais fortes, RE-RANQUEADAS por score.
+
+    - match exato de palavra-chave (fronteira de palavra) → força 1.0
+    - senão, similaridade fuzzy (0 a 1)
+    - score final = força × (0.6 + 0.4 × peso/9)  → dá pra ver quão "certo" o bot está.
+
+    É transparência/decisão: o classificar() calcula isso todo turno e guarda na
+    sessão, e o /contexto (terminal) e /sessao (web) mostram as candidatas.
+    """
+    t = normalizar(mensagem)
+    ranking = []
+    for _, row in intencoes.iterrows():
+        keywords = str(row["palavras_chave"]).strip()
+        if not keywords or keywords == "nan":
+            continue
+        peso = _peso(row)
+        melhor, tipo = 0.0, None
+        for kw in keywords.split("|"):
+            kw = normalizar(kw.strip())
+            if not kw:
+                continue
+            padrao = (r'\b' + re.escape(kw)) if kw[0].isalnum() else re.escape(kw)
+            if re.search(padrao, t):
+                melhor, tipo = 1.0, "palavra-chave"
+                break
+            if len(kw) >= 4 and len(t) >= len(kw) * 0.5:
+                sc = fuzz.partial_ratio(kw, t) / 100.0
+                if sc > melhor:
+                    melhor, tipo = sc, "similaridade"
+        if melhor > 0:
+            score = round(melhor * (0.6 + 0.4 * peso / 9.0), 3)
+            ranking.append({"intencao": row["id_intencao"], "score": score, "por": tipo})
+    ranking.sort(key=lambda c: c["score"], reverse=True)
+    return ranking[:top]
+
+
 def _peso(row):
     """
     Lê o PESO da intenção (coluna 'peso' do intencoes.csv). É o número que
@@ -34,6 +92,13 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     """
     t = normalizar(mensagem)
 
+    # Score de confiança / re-ranking das intenções — guardado na sessão pra o
+    # /contexto e /sessao mostrarem (o "recalcular a intenção" pedido em sala).
+    if sessao is not None:
+        candidatas = pontuar_candidatas(mensagem, intencoes)
+        sessao["intencao_candidatas"] = candidatas
+        sessao["confianca"] = candidatas[0]["score"] if candidatas else 0.0
+
     # ── 0. Aguardando opção de menu ──────────────────────────────
     if sessao and sessao.get("aguardando_opcao"):
         return "selecao_opcao"
@@ -42,6 +107,15 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if sessao:
         # Registro de pedido (CREATE) em andamento → continua coletando os campos.
         if sessao.get("registro_pedido") is not None:
+            return "registrar_pedido"
+        # Acabou de registrar um item e perguntamos "quer mais um produto?".
+        if sessao.get("aguardando_mais_produto"):
+            if re.search(r'\bnao\b|\bnão\b|\bnn\b|so isso|nada mais|mais nada|'
+                         r'finaliz|encerr|pode fechar|e so|era so|chega|ta bom|'
+                         r'\bnop\b', t):
+                return "finalizar_pedidos"
+            # qualquer outra coisa (um "sim" ou já um novo produto) → novo item
+            sessao["aguardando_mais_produto"] = False
             return "registrar_pedido"
         # Pedimos um ID antes e ele chegou agora → executa a ação que ficou pendente
         # (consultar / cancelar / alterar). Guardada em sessao["aguardando_id"].
@@ -63,8 +137,22 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     # ("quero fazer um pedido", "registrar pedido", "novo pedido"...)
     if re.search(r'\b(registrar|cadastrar|abrir|criar)\b.*\bpedido\b', t) or \
        re.search(r'\b(fazer|faz)\b.*\bpedido\b', t) or \
-       re.search(r'\bnovo pedido\b', t):
+       re.search(r'\b(novo|outro|mais um|mais) pedido\b', t):
         return "registrar_pedido"
+
+    # CREATE implícito: o cliente já está PEDINDO/ENCOMENDANDO, não só perguntando.
+    # "quero 100 camisas de linho", "vou querer", "quero comprar 200 polos". O bot
+    # tem que SAIR do modo informação e começar a registrar (aproveitando produto/
+    # quantidade/tecido já ditos). Distingue de "quero SABER/ver/quanto custa".
+    if not re.search(r'\bsaber\b|\bver\b|\bconhec\w+|\bsobre\b|informac|d[uú]vida|'
+                     r'\bquais\b|\bqual\b|\bcomo\b|\bquanto\b|\bpreco\b|\bpreço\b', t):
+        frase_pedido = re.search(
+            r'\bvou querer\b|\bvou levar\b|\bvou fechar\b|\bpode fechar\b|'
+            r'\bfechar (o )?pedido\b|\bencomend\w+|\bquero (fazer|fechar)\b', t)
+        verbo_querer = re.search(r'\b(quero|queria|comprar|pedir)\b', t)
+        if frase_pedido or (verbo_querer and slots_efetivos.get("produto")
+                            and slots_efetivos.get("quantidade")):
+            return "registrar_pedido"
 
     # Obs: "avançar etapa" NÃO é ação do cliente (é da produção interna), então
     # não tem regra de chat aqui. A função existe em bot/pedidos/atualizar.py e é
@@ -81,8 +169,17 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
                  r'acompanhar (o )?(meu )?pedido|onde esta (o )?meu pedido|'
                  r'andamento d[oae] (meu )?pedido|fase d[oae] (meu )?pedido|'
                  r'etapa d[oae] (meu )?pedido|saiu do corte|foi para a costura|'
-                 r'esta no corte|esta na costura|meu lote', t):
+                 r'esta no corte|esta na costura|meu lote|'
+                 # formas soltas: "quero acompanhar", "como ta o andamento",
+                 # "como ta meu pedido", "ja terminou o pedido"
+                 r'\bacompanhar\b|\bandamento\b|como (ta|esta) (o )?(meu )?pedido', t):
         return "status_pedido"
+
+    # ── 1b. Pediram algo FORA do catálogo (moto, sapato, geladeira...) ──
+    # Vem cedo, ANTES de "comprar" cair em vendas: o bot precisa NEGAR e reafirmar
+    # o que a gente faz, não encaminhar pra vendas nem dar fallback.
+    if re.search(FORA_CATALOGO, t):
+        return "cat_nao_fazemos"
 
     # ── 2. Regras por slot DO TURNO ATUAL ─────────────────────────
     # CRÍTICO 5: numero_pedido só dispara se foi mencionado AGORA,
@@ -254,8 +351,27 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
             return "prazo_padrao"
         if re.search(r'\btamanhos?\b|\bgrade\b|\bnumeracao\b', t):
             return "personalizacao_tamanhos"
+        # "como cuido/lavo da camiseta" (cuidado do PRODUTO, sem tecido citado)
+        # → menu de manutenção, não o catálogo do produto.
+        if re.search(r'\bcuid\w+|\blav\w+|\bconserv\w+|\bencolh\w+|\bdesbot\w+', t):
+            return "manutencao"
         if slots_efetivos.get("urgente"):
             return "prazo_urgente"
+
+    # "premium" (a camiseta premium) → detalhe do produto (da tabela produtos.csv),
+    # não o catálogo inteiro de camisetas. Basta o extractor ter resolvido o
+    # produto como camiseta_premium (cobre "camisas premium", typo "premiun" etc);
+    # pedido com quantidade já virou registrar_pedido lá em cima.
+    if produto == "camiseta_premium":
+        return "produto_detalhe"
+
+    # "qual/quais tecido(s) pra <produto>" → lista os tecidos que combinam com o
+    # produto. Só quando NENHUM tecido específico foi citado (senão "camiseta de
+    # linho" é um veredito pontual, tratado na regra de compatibilidade acima) e
+    # NÃO é pergunta de consumo (metros) nem de gramatura (grosso/fino/peso).
+    if produto and not slots_efetivos.get("tecido") and re.search(r'\btecidos?\b', t) \
+       and not re.search(r'\bmetros?\b|gramatura|\bgrosso\b|\bfino\b|\bpeso\b|\bgrama', t):
+        return "combinado_tecidos_disponiveis_para_produto"
 
     # ── 8. Palavras-chave do CSV (desempate por PESO) ─────────────
     # Antes era "a primeira intenção que bater vence". Agora coletamos TODAS as
@@ -303,6 +419,13 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
             # longa ("vei" em "sustenta-vei-s"/"dura-vei-s") e gera intenção absurda.
             # O match exato dessas já foi feito na etapa 8; aqui elas só dão ruído.
             if len(kw) < 4:
+                continue
+            # Mensagem MUITO mais curta que a keyword? Pula. Senão um token solto
+            # casa 100% dentro de uma keyword composta ("preto" dentro de "tem
+            # vestido preto") e cai numa intenção combinada sem os slots (→ "em None").
+            # 0.5 bloqueia "preto"(5) vs "tem vestido preto"(17) mas libera
+            # "produtos"(8) vs "quais produtos"(14).
+            if len(t) < len(kw) * 0.5:
                 continue
             score = fuzz.partial_ratio(kw, t)
             # vence o maior score; se empatar no score, vence o maior peso

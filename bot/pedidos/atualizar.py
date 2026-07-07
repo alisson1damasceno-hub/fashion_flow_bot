@@ -27,7 +27,8 @@ Pseudocódigo equivalente (Semana 3 — UPDATE = READ + alterar + SALVAR):
 from bot.pedidos import persistencia
 
 # Campos que o cliente pode alterar (enquanto está na modelagem).
-CAMPOS_ALTERAVEIS = ["cor", "tamanho", "quantidade", "personalizacao"]
+# tecido entra aqui: na modelagem (antes do corte) trocar o pano ainda é viável.
+CAMPOS_ALTERAVEIS = ["cor", "tamanho", "quantidade", "personalizacao", "tecido"]
 
 
 def _etapas_em_ordem():

@@ -35,6 +35,38 @@ def _limpar_nome(mensagem):
     return t.strip(" .,!?").title()
 
 
+# Sinais de que o texto é uma PERGUNTA/PEDIDO, não um nome de pessoa. Se a gente
+# pediu o nome e vem uma dessas, NÃO guardamos como nome (senão "personalização"
+# virava "Prazer, Personalização!" e "gostaria de..." virava "Gostaria").
+_PERGUNTA = re.compile(
+    r'\?|\b(quero|queria|gostaria|desejo|qual|quais|quanto|quantos|quantas|como|'
+    r'quando|onde|cade|tem|temos|voces|vcs|fazem|faz|fazer|preciso|pode|sobre|'
+    r'me|informa|mostra|explica|ajuda)\b'
+)
+# Temas do bot (palavra inteira) — nome de pessoa não é uma dessas.
+_TEMA = re.compile(
+    r'\b(personaliza\w*|customiza\w*|camisa\w*|camiseta\w*|moleto\w*|calca\w*|'
+    r'polos?|vestido\w*|uniforme\w*|jaqueta\w*|legging\w*|bermuda\w*|regata\w*|'
+    r'jaleco\w*|tecido\w*|algodao|viscose|linho|jeans|suplex|'
+    r'prazo\w*|preco\w*|valor\w*|orcamento\w*|desconto\w*|bordado\w*|silk\w*|'
+    r'serigrafia|estampa\w*|tamanho\w*|entrega\w*|frete\w*|pedido\w*|'
+    r'catalogo\w*|produto\w*|gramatura\w*|sustentabilidade|qualidade|'
+    r'revenda\w*|atacado|manutencao|lavar|encolh\w*)\b'
+)
+
+
+def _parece_nome(nome_limpo):
+    """True se o texto parece um nome de pessoa (e não uma pergunta/tema do bot)."""
+    t = normalizar(nome_limpo).strip()
+    if not t:
+        return False
+    if len(t.split()) > 4:          # nome tem no máximo ~4 palavras
+        return False
+    if _PERGUNTA.search(t) or _TEMA.search(t):
+        return False
+    return True
+
+
 def tratar_nome(mensagem, sessao):
     """
     Cuida da CAPTURA do nome no começo da conversa.
@@ -42,15 +74,22 @@ def tratar_nome(mensagem, sessao):
     Retorna:
       - uma resposta (str) SE ainda estamos tratando do nome (perguntando ou
         confirmando) — nesse caso o fluxo normal do bot NÃO roda neste turno;
-      - None se o nome já é conhecido (aí o fluxo normal continua).
+      - None se o nome já é conhecido OU se a mensagem é uma pergunta (aí o fluxo
+        normal continua e responde a pergunta em vez de virar nome).
     """
     # Já sabemos o nome -> não interfere, segue o fluxo normal do bot.
     if sessao.get("nome_cliente"):
         return None
 
-    # Já perguntamos e estamos esperando -> a mensagem atual É o nome.
+    # Já perguntamos e estamos esperando -> a mensagem atual DEVERIA ser o nome.
     if sessao.get("aguardando_nome"):
-        nome = _limpar_nome(mensagem) or "cliente"
+        nome = _limpar_nome(mensagem)
+        if not _parece_nome(nome):
+            # Não era um nome, era uma pergunta ("personalização", "quero X...").
+            # Para de esperar o nome e deixa o pipeline responder normalmente.
+            sessao["aguardando_nome"] = False
+            sessao["ativa"] = True
+            return None
         sessao["nome_cliente"] = nome
         sessao["aguardando_nome"] = False
         sessao["ativa"] = True
@@ -58,6 +97,11 @@ def tratar_nome(mensagem, sessao):
             f"Prazer, {primeiro_nome(nome)}! Sou o assistente do setor de produção "
             "da Fashion Flow. Em que posso te ajudar?"
         )
+
+    # Conversa já ativa (a pessoa já mandou pergunta sem dar nome) -> não fica
+    # pedindo o nome de novo; segue respondendo.
+    if sessao.get("ativa"):
+        return None
 
     # Primeira interação da conversa -> pede o nome.
     sessao["aguardando_nome"] = True

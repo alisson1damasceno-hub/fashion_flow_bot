@@ -69,7 +69,9 @@ def chat(req: MensagemRequest):
         sessoes[sessao_id] = resetar_sessao(sessao)
         return {"resposta": "Até logo! Se precisar, é só voltar."}
 
-    if is_casual(mensagem) and sessao["ativa"]:
+    # "sim/ok" curto vira "pode continuar" — MAS não quando estamos perguntando
+    # "quer mais um produto?" (aí "sim" tem que iniciar o próximo item).
+    if is_casual(mensagem) and sessao["ativa"] and not sessao.get("aguardando_mais_produto"):
         return {"resposta": "Beleza, pode continuar!"}
 
     em_menu = bool(sessao.get("aguardando_opcao"))
@@ -95,6 +97,9 @@ def get_sessao(sessao_id: str):
         "foco_atual": s["foco_atual"],
         "ultimo_assunto": s["ultimo_assunto"],
         "aguardando_opcao": s["aguardando_opcao"],
+        "intencao_escolhida": s.get("intencao_escolhida"),
+        "confianca": s.get("confianca"),
+        "intencao_candidatas": s.get("intencao_candidatas", []),
         "qtd_turnos": len(s["historico_turnos"]),
         "historico": s["historico_turnos"],
     }

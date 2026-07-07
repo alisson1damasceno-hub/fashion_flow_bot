@@ -56,10 +56,16 @@ def criar_sessao():
         "alteracao_pendente": None,     # {campo, valor} guardado até o cliente mandar o ID
         "registro_pedido": None,        # dados coletados do pedido em registro (CREATE), ou None
         "registro_campo_pendente": None,  # campo que estamos perguntando agora
+        "carrinho": [],                  # itens do pedido em montagem (vários produtos, 1 pedido)
+        "aguardando_mais_produto": False,  # esperando resposta de "quer adicionar mais?"
         # ── mapa de estados da conversa (ver bot/estados.py) ────────
         "estado_conversa": "OCIOSO",     # ONDE estamos no diálogo
         "objetivo_usuario": None,        # O QUE o usuário quer (meta grande)
         "ultimo_assunto": None,
+        # ── score de confiança / re-ranking (ver classifier.pontuar_candidatas) ──
+        "intencao_candidatas": [],       # top intenções com score, do último turno
+        "confianca": 0.0,                # score da intenção mais forte
+        "intencao_escolhida": None,      # a que o bot REALMENTE usou (regra pode ter recalculado)
         "ativa": False,
     }
 
@@ -75,6 +81,8 @@ def resetar_sessao(sessao):
     sessao["alteracao_pendente"] = None
     sessao["registro_pedido"] = None
     sessao["registro_campo_pendente"] = None
+    sessao["carrinho"] = []
+    sessao["aguardando_mais_produto"] = False
     sessao["estado_conversa"] = "OCIOSO"
     sessao["objetivo_usuario"] = None
     sessao["ultimo_assunto"] = None
@@ -131,11 +139,21 @@ def atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, respo
         novo_foco.pop("produto", None)
         novo_foco.pop("quantidade", None)
 
+    # Acabou de registrar um item e vamos perguntar "quer mais um produto?" →
+    # zera o foco pra o PRÓXIMO produto não herdar os dados do anterior.
+    if sessao.get("aguardando_mais_produto"):
+        novo_foco = {}
+
     sessao["foco_atual"] = novo_foco
 
     # ultimo_assunto: ignora seleções de menu (preserva o assunto real anterior)
     if intencao != "selecao_opcao":
         sessao["ultimo_assunto"] = intencao
+
+    # a intenção que o bot DE FATO usou (pode divergir da candidata de maior score
+    # quando uma regra recalcula — ex: "comprar moto": score aponta vendas, regra
+    # de negação escolhe cat_nao_fazemos).
+    sessao["intencao_escolhida"] = intencao
 
     sessao["ativa"] = True
 

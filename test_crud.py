@@ -42,15 +42,15 @@ def pid(n):
 #   0003 embalagem/concluido    -> não cancela (já concluído)
 #   0004 modelagem/cancelado    -> já cancelado
 SEED_PEDIDOS = (
-    "numero_pedido,data_criacao,cliente,produto,quantidade,cor,tamanho,tecido,"
+    "numero_pedido,item,data_criacao,cliente,produto,quantidade,cor,tamanho,tecido,"
     "personalizacao,etapa_atual,status,data_prevista,observacao\n"
-    f"{pid(1)},{ANO}-06-01,Maria Silva,camiseta_basica,100,preto,M,algodao_pima,bordado,"
+    f"{pid(1)},1,{ANO}-06-01,Maria Silva,camiseta_basica,100,preto,M,algodao_pima,bordado,"
     f"modelagem,em_producao,{ANO}-07-01,alteravel\n"
-    f"{pid(2)},{ANO}-06-01,Joao Souza,polo,200,branco,G,algodao_penteado,silkscreen,"
+    f"{pid(2)},1,{ANO}-06-01,Joao Souza,polo,200,branco,G,algodao_penteado,silkscreen,"
     f"corte,em_producao,{ANO}-07-02,no corte\n"
-    f"{pid(3)},{ANO}-05-01,Ana Costa,legging,50,preto,M,suplex,dtf,"
+    f"{pid(3)},1,{ANO}-05-01,Ana Costa,legging,50,preto,M,suplex,dtf,"
     f"embalagem_expedicao,concluido,{ANO}-06-01,pronto\n"
-    f"{pid(4)},{ANO}-06-01,Carlos Lima,moletom,80,marinho,GG,moletom_flanelado,nenhuma,"
+    f"{pid(4)},1,{ANO}-06-01,Carlos Lima,moletom,80,marinho,GG,moletom_flanelado,nenhuma,"
     f"modelagem,cancelado,{ANO}-07-10,cancelado antes\n"
 )
 
@@ -263,6 +263,41 @@ class TestCrudPedidos(unittest.TestCase):
                  "cliente": "Fulano de Tal"}
         r = criar.registrar_pedido(dados)
         self.assertEqual(r["pedido"]["cliente"], "Fulano de Tal")
+
+    # ---------- pedido com VÁRIOS itens (mesmo número) ----------
+    def _itens_exemplo(self):
+        return [
+            {"produto": "camiseta_basica", "quantidade": 100, "cor": "preto",
+             "tamanho": "M", "tecido": "algodao_basico", "personalizacao": "nenhuma"},
+            {"produto": "polo", "quantidade": 50, "cor": "branco",
+             "tamanho": "G", "tecido": "algodao_basico", "personalizacao": "bordado"},
+        ]
+
+    def test_lote_um_numero_varios_itens(self):
+        r = criar.registrar_pedido_lote(self._itens_exemplo(), cliente="Bia")
+        self.assertTrue(r["sucesso"])
+        _, indices, linhas = persistencia.buscar_itens_por_id(r["numero"])
+        self.assertEqual(len(linhas), 2)                      # 2 itens, 1 número
+        self.assertEqual({l["item"] for l in linhas}, {"1", "2"})
+        self.assertEqual({l["numero_pedido"] for l in linhas}, {r["numero"]})
+        self.assertEqual(linhas[1]["produto"], "polo")
+
+    def test_lote_vazio_recusa(self):
+        r = criar.registrar_pedido_lote([], cliente="Bia")
+        self.assertFalse(r["sucesso"])
+
+    def test_consultar_mostra_varios_itens(self):
+        r = criar.registrar_pedido_lote(self._itens_exemplo(), cliente="Bia")
+        c = consultar.consultar_pedido(r["numero"], nome_cliente="Bia")
+        self.assertTrue(c["sucesso"])
+        self.assertEqual(len(c["itens"]), 2)
+        self.assertIn("2 itens", c["mensagem"])
+
+    def test_cancelar_multi_item_cancela_tudo(self):
+        r = criar.registrar_pedido_lote(self._itens_exemplo(), cliente="Bia")
+        cancelar.cancelar_pedido(r["numero"], nome_cliente="Bia")
+        _, _, linhas = persistencia.buscar_itens_por_id(r["numero"])
+        self.assertTrue(all(l["status"] == "cancelado" for l in linhas))
 
 
 # ═══════════════════════════ CRUD DE INTENÇÕES ═══════════════════════════

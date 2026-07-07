@@ -67,6 +67,7 @@ def registrar_pedido(dados_pedido):
     # 2. Monta a linha nova do pedido.
     novo = {
         "numero_pedido": persistencia.gerar_id(df, hoje.year),  # ID gerado aqui
+        "item": "1",                                             # pedido de 1 item
         "data_criacao": hoje.isoformat(),
         "cliente": dados_pedido.get("cliente", ""),  # dono = nome guardado na conversa
         "produto": dados_pedido["produto"],
@@ -95,3 +96,43 @@ def registrar_pedido(dados_pedido):
         f"{novo['data_prevista']}. Guarde esse número para consultar o andamento."
     )
     return {"sucesso": True, "mensagem": msg, "pedido": novo}
+
+
+def registrar_pedido_lote(itens, cliente=""):
+    """
+    Registra UM pedido com VÁRIOS itens — várias linhas com o MESMO numero_pedido
+    (item 1, 2, 3...). É o pedido único com vários produtos.
+
+    `itens`: lista de dicts (produto, quantidade, cor, tamanho, tecido, personalizacao).
+    Retorna {"sucesso", "mensagem", "numero", "itens"}.
+    """
+    itens = [it for it in (itens or []) if it]
+    if not itens:
+        return {"sucesso": False, "mensagem": "Não há itens para registrar.", "numero": None}
+
+    df = persistencia.carregar()
+    hoje = date.today()
+    numero = persistencia.gerar_id(df, hoje.year)          # UM número pro pedido todo
+    prevista = (hoje + timedelta(days=PRAZO_PADRAO_DIAS)).isoformat()
+
+    resumos = []
+    for idx, it in enumerate(itens, 1):
+        novo = {
+            "numero_pedido": numero, "item": str(idx),
+            "data_criacao": hoje.isoformat(), "cliente": cliente,
+            "produto": it.get("produto", ""), "quantidade": str(it.get("quantidade", "")),
+            "cor": it.get("cor", ""), "tamanho": it.get("tamanho", ""),
+            "tecido": it.get("tecido", ""), "personalizacao": it.get("personalizacao", ""),
+            "etapa_atual": "modelagem", "status": "em_producao",
+            "data_prevista": prevista, "observacao": "",
+        }
+        df.loc[len(df)] = [novo[c] for c in persistencia.COLUNAS]
+        resumos.append(f"{idx}) {novo['quantidade']}x {novo['produto'].replace('_', ' ')} "
+                       f"{novo['cor'].replace('_', ' ')}".strip())
+    persistencia.salvar(df)
+
+    corpo = "; ".join(resumos)
+    plural = "item" if len(itens) == 1 else "itens"
+    msg = (f"Pedido registrado! Número {numero}, com {len(itens)} {plural}: {corpo}. "
+           f"Começa na modelagem; previsão de término: {prevista}. Guarde esse número.")
+    return {"sucesso": True, "mensagem": msg, "numero": numero, "itens": itens}
