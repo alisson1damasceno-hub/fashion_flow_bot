@@ -557,10 +557,10 @@ compat_tecido_produto,posso fazer camiseta de jeans,combinado_tecido_em_produto,
 compat_tecido_produto,da pra usar jeans em camiseta,combinado_tecido_em_produto,OK,,Não recomendamos jeans em camiseta basica - caimento ou durabilidade inadequada
 compat_tecido_produto,camiseta de jeans fica bom,combinado_tecido_em_produto,OK,,Não recomendamos jeans em camiseta basica - caimento ou durabilidade inadequada
 compat_tecido_produto,jeans serve pra camiseta,combinado_tecido_em_produto,OK,,Não recomendamos jeans em camiseta basica - caimento ou durabilidade inadequada
-compat_tecido_produto,quais tecidos pra camiseta,combinado_tecidos_disponiveis_para_produto,OK,,Consultar lookup_compat_tecido_produto e listar todos os tecidos compatíveis com o produto consultado. ⏎ Qual produto você quer saber os tecidos disponíveis?
-compat_tecido_produto,quais tecidos pra polo,combinado_tecidos_disponiveis_para_produto,OK,,Consultar lookup_compat_tecido_produto e listar todos os tecidos compatíveis com o produto consultado. ⏎ Qual produto você quer saber os tecidos disponíveis?
-compat_tecido_produto,que tecido posso usar em moletom,cat_moletons,OK,,"Linha de moletons: flanelado (inverno), peluciado (meia estação), com capuz, sem capuz, com zíper (jaqueta moletom). Também jaqueta corta-vento e jaqueta puffer. Gramaturas de 280g a 380g."
-compat_tecido_produto,quais tecidos servem pra vestido,cat_vestidos,OK,,"Linha de vestidos: básico de malha, midi viscose, longo de festa (sob demanda), vestido camisa, vestido moletom (estilo casual). Trabalhamos do PP ao G4."
+compat_tecido_produto,quais tecidos pra camiseta,combinado_tecidos_disponiveis_para_produto,OK,,"Para camiseta basica, os tecidos recomendados são: algodao basico, algodao penteado, malha mista, dry fit, rPET reciclado, bambu."
+compat_tecido_produto,quais tecidos pra polo,combinado_tecidos_disponiveis_para_produto,OK,,"Para polo, os tecidos recomendados são: algodao penteado, algodao pima."
+compat_tecido_produto,que tecido posso usar em moletom,combinado_tecidos_disponiveis_para_produto,OK,,"Para moletom, os tecidos recomendados são: moletom flanelado, moletom peluciado."
+compat_tecido_produto,quais tecidos servem pra vestido,combinado_tecidos_disponiveis_para_produto,OK,,"Para vestido midi, os tecidos recomendados são: viscose, linho, tencel."
 compat_pers_tecido,posso fazer bordado em jeans,combinado_personalizacao_em_tecido,OK,,Sim! Excelente - tradicional em jeans
 compat_pers_tecido,da pra bordar viscose,combinado_personalizacao_em_tecido,OK,,Tecido fino pode franzir com bordado - bordado leve apenas
 compat_pers_tecido,silk em algodao funciona,combinado_personalizacao_em_tecido,OK,,Sim! Combinação clássica - melhor relação custo-benefício

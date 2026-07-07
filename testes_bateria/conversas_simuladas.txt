@@ -7,7 +7,7 @@ CONVERSA 01 — Tecido por produto, troca de produto
   🧑 Ana
   🤖 [captura_nome] Prazer, Ana! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 qual tecido pra camiseta
-  🤖 [cat_camisetas] Ana, Linha de camisetas: básica (100% algodão, gola careca/V/polo), premium (algodão pima penteado), regata, baby look e oversized. Gramaturas de 140g a 220g. Todas as 12 cores em pronta entrega.
+  🤖 [combinado_tecidos_disponiveis_para_produto] Ana, Para camiseta basica, os tecidos recomendados são: algodao basico, algodao penteado, malha mista, dry fit, rPET reciclado, bambu.
   🧑 e pra moletom?
   🤖 [cat_moletons] Ana, Linha de moletons: flanelado (inverno), peluciado (meia estação), com capuz, sem capuz, com zíper (jaqueta moletom). Também jaqueta corta-vento e jaqueta puffer. Gramaturas de 280g a 380g.
   🧑 valeu
@@ -662,8 +662,7 @@ CONVERSA 50 — Troca abrupta de assunto
   🧑 Dora
   🤖 [captura_nome] Prazer, Dora! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 quais tecidos pra camiseta
-  🤖 [combinado_tecidos_disponiveis_para_produto] Dora, Consultar lookup_compat_tecido_produto e listar todos os tecidos compatíveis com o produto consultado.
-Qual produto você quer saber os tecidos disponíveis?
+  🤖 [combinado_tecidos_disponiveis_para_produto] Dora, Para camiseta basica, os tecidos recomendados são: algodao basico, algodao penteado, malha mista, dry fit, rPET reciclado, bambu.
   🧑 quero cancelar o pedido FF-2026-0009
   🤖 [cancelar_pedido] Dora, Não encontrei o pedido FF-2026-0009. Confere o número?
   🧑 e a cor branca, tem?

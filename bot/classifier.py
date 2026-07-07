@@ -257,6 +257,14 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
         if slots_efetivos.get("urgente"):
             return "prazo_urgente"
 
+    # "qual/quais tecido(s) pra <produto>" → lista os tecidos que combinam com o
+    # produto. Só quando NENHUM tecido específico foi citado (senão "camiseta de
+    # linho" é um veredito pontual, tratado na regra de compatibilidade acima) e
+    # NÃO é pergunta de consumo (metros) nem de gramatura (grosso/fino/peso).
+    if produto and not slots_efetivos.get("tecido") and re.search(r'\btecidos?\b', t) \
+       and not re.search(r'\bmetros?\b|gramatura|\bgrosso\b|\bfino\b|\bpeso\b|\bgrama', t):
+        return "combinado_tecidos_disponiveis_para_produto"
+
     # ── 8. Palavras-chave do CSV (desempate por PESO) ─────────────
     # Antes era "a primeira intenção que bater vence". Agora coletamos TODAS as
     # intenções cuja palavra-chave aparece na frase e ficamos com a de MAIOR PESO.

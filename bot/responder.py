@@ -717,6 +717,23 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             return f"Sim! {obs}"
         return obs
 
+    # ── Quais tecidos combinam com um produto ────────────────────
+    # (Antes esse id tinha uma resposta PLACEHOLDER de dev no CSV — "Consultar
+    # lookup... e listar". Agora lista de verdade os tecidos compatíveis.)
+    if intencao == "combinado_tecidos_disponiveis_para_produto":
+        produto = slots.get("produto")
+        if not produto:
+            return ("Pra qual produto? (ex: camiseta, moletom, calça, vestido...) "
+                    "Aí eu listo os tecidos que combinam.")
+        df = dados["compat_tecido_produto"]
+        compat = df[(df["produto"] == produto)
+                    & (df["compativel"].str.strip().str.lower() == "sim")]
+        if compat.empty:
+            return (f"Não tenho tecidos cadastrados como ideais para "
+                    f"{produto.replace('_',' ')}. Consulte o setor técnico.")
+        tecidos = ", ".join(t.replace("_", " ") for t in compat["tecido"].tolist())
+        return f"Para {produto.replace('_',' ')}, os tecidos recomendados são: {tecidos}."
+
     # ── Cor em tecido ────────────────────────────────────────────
     if intencao == "combinado_cor_em_tecido":
         cor = slots.get("cor")
