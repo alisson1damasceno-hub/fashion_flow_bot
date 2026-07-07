@@ -36,7 +36,7 @@ CONVERSA 03 — Cores e cor em tecido
   🤖 [captura_nome] Prazer, Julia! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 quais cores voces tem
   🤖 [personalizacao_cores] Julia, Sobre cores, o que você quer saber?
-  1. Escolha uma opção: Cores básicas em estoque
+  1. Cores básicas em estoque
   2. Tingimento sob demanda
   3. Combinação cor peça/estampa
   4. Limite de cores por técnica
@@ -55,7 +55,7 @@ CONVERSA 04 — Tamanho e plus size
   🤖 [captura_nome] Prazer, Marcos! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 quais tamanhos de polo
   🤖 [personalizacao_tamanhos] Marcos, Sobre tamanhos, o que você precisa saber?
-  1. Escolha uma opção: Grade adulto
+  1. Grade adulto
   2. Grade infantil
   3. Plus size
   4. Tabela de medidas
@@ -83,7 +83,7 @@ CONVERSA 06 — Personalização: tipos → silk → prazo
   🤖 [captura_nome] Prazer, Leo! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 quais tipos de personalizacao
   🤖 [personalizacao] Leo, A Fashion Flow trabalha com personalização. O que você quer saber?
-  1. Escolha uma opção: Tipos de personalização
+  1. Tipos de personalização
   2. Cores disponíveis
   3. Tamanhos disponíveis
   4. Quantidade mínima
@@ -105,7 +105,7 @@ CONVERSA 07 — Sugestão academia → tecido → cor
   🤖 [sug_esporte] Duda, Para esporte indico: camiseta dry fit (poliéster com toque seco), legging suplex, bermuda esportiva, regata. Tecidos para suor, secagem rápida e elasticidade.
   🧑 qual tecido é melhor
   🤖 [tecidos] Duda, Sobre tecidos, o que você quer saber?
-  1. Escolha uma opção: Lista de tecidos disponíveis
+  1. Lista de tecidos disponíveis
   2. Composição de cada peça
   3. Origem dos tecidos
   4. Sugestão por uso
@@ -113,7 +113,7 @@ CONVERSA 07 — Sugestão academia → tecido → cor
   6. Não trabalhamos com
   🧑 e as cores?
   🤖 [selecao_opcao] Duda, Sobre cores, o que você quer saber?
-  1. Escolha uma opção: Cores básicas em estoque
+  1. Cores básicas em estoque
   2. Tingimento sob demanda
   3. Combinação cor peça/estampa
   4. Limite de cores por técnica
@@ -156,7 +156,7 @@ CONVERSA 10 — Menu sustentabilidade → vegano
   🤖 [captura_nome] Prazer, Igor! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 voces sao sustentaveis?
   🤖 [sustentabilidade] Igor, A Fashion Flow leva sustentabilidade a sério. Sobre o que você quer saber?
-  1. Escolha uma opção: Aproveitamento de tecido
+  1. Aproveitamento de tecido
   2. Materiais sustentáveis
   3. Reciclagem de sobras
   4. Tinturas e químicos
@@ -174,7 +174,7 @@ CONVERSA 11 — Menu manutenção → lavar → algodão
   🤖 [captura_nome] Prazer, Sofia! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 como cuido das pecas
   🤖 [manutencao] Sofia, Sobre cuidados com a peça, qual sua dúvida?
-  1. Escolha uma opção: Como lavar
+  1. Como lavar
   2. Ferro de passar
   3. Secadora
   4. Alvejante
@@ -208,7 +208,7 @@ CONVERSA 13 — Catálogo → camisetas → oversized
   🤖 [captura_nome] Prazer, Lara! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 o que voces produzem
   🤖 [catalogo] Lara, A Fashion Flow tem várias linhas. Qual te interessa?
-  1. Escolha uma opção: Camisetas e básicas
+  1. Camisetas e básicas
   2. Moletons e jaquetas
   3. Calças e shorts
   4. Vestidos
@@ -228,7 +228,7 @@ CONVERSA 14 — Menu personalização → cores → tingimento
   🤖 [captura_nome] Prazer, Caio! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 quero personalizar
   🤖 [personalizacao] Caio, A Fashion Flow trabalha com personalização. O que você quer saber?
-  1. Escolha uma opção: Tipos de personalização
+  1. Tipos de personalização
   2. Cores disponíveis
   3. Tamanhos disponíveis
   4. Quantidade mínima
@@ -236,8 +236,12 @@ CONVERSA 14 — Menu personalização → cores → tingimento
   6. Envio de arte
   🧑 quais cores disponiveis
   🤖 [selecao_opcao] Caio, Sobre cores, o que você quer saber?
+  1. Cores básicas em estoque
+  2. Tingimento sob demanda
+  3. Combinação cor peça/estampa
+  4. Limite de cores por técnica
   🧑 fazem tingimento?
-  🤖 [cores_sob_demanda] Caio, Cores fora da nossa paleta padrão são tingidas sob demanda. Pedido mínimo de 80 peças por cor e prazo adicional de 7 a 10 dias úteis. Aceitamos referência Pantone para tingimento exato. Para tons pastel ou neon, prazo pode ser maior.
+  🤖 [selecao_opcao] Caio, Cores fora da nossa paleta padrão são tingidas sob demanda. Pedido mínimo de 80 peças por cor e prazo adicional de 7 a 10 dias úteis. Aceitamos referência Pantone para tingimento exato. Para tons pastel ou neon, prazo pode ser maior.
 
 ========================================================================
 CONVERSA 15 — Preço → prazo → desconto de 100 camisetas
@@ -550,7 +554,7 @@ CONVERSA 41 — Despedida reseta e volta
   🤖 [captura_nome] Prazer, Dani! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 quais cores tem
   🤖 [personalizacao_cores] Dani, Sobre cores, o que você quer saber?
-  1. Escolha uma opção: Cores básicas em estoque
+  1. Cores básicas em estoque
   2. Tingimento sob demanda
   3. Combinação cor peça/estampa
   4. Limite de cores por técnica
@@ -562,7 +566,7 @@ CONVERSA 41 — Despedida reseta e volta
   🤖 [captura_nome] Prazer, Dani! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 quais tamanhos
   🤖 [personalizacao_tamanhos] Dani, Sobre tamanhos, o que você precisa saber?
-  1. Escolha uma opção: Grade adulto
+  1. Grade adulto
   2. Grade infantil
   3. Plus size
   4. Tabela de medidas
@@ -606,7 +610,7 @@ CONVERSA 45 — Manutenção: encolheu
   🤖 [captura_nome] Prazer, Fabi! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 minha camiseta encolheu na lavagem
   🤖 [manutencao] Fabi, Sobre cuidados com a peça, qual sua dúvida?
-  1. Escolha uma opção: Como lavar
+  1. Como lavar
   2. Ferro de passar
   3. Secadora
   4. Alvejante
@@ -656,7 +660,7 @@ CONVERSA 49 — Gibberish → fallback → reformula
   🤖 [fallback] Rui, Hmm, não consegui entender bem. Posso te ajudar com: produção, tecidos, personalização, qualidade, sustentabilidade, cuidados, prazos e catálogo. Sobre qual desses você quer saber? Se for outro assunto (preço, entrega, devolução), me avisa que encaminho para o setor certo.
   🧑 quero saber dos prazos
   🤖 [previsao_prazo] Rui, Sobre prazos da produção, qual sua dúvida?
-  1. Escolha uma opção: Prazo padrão
+  1. Prazo padrão
   2. Com personalização
   3. Pedido urgente
   4. Pedido grande (500+)

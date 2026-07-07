@@ -434,11 +434,11 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 if sessao:
                     # MÉDIO 15: não persiste no foco_atual; só limpa o menu.
                     sessao["aguardando_opcao"] = None
-                df_int = dados["intencoes"]
-                row_sub = df_int[df_int["id_intencao"] == escolha]
-                if not row_sub.empty:
-                    return row_sub.iloc[0]["resposta_padrao"]
-                return f"Entendido! Registrei: {escolha.replace('_', ' ')}. Como posso continuar te ajudando?"
+                # Renderiza a sub-intenção COMPLETA (recursa no responder). Se ela
+                # tiver um submenu próprio (ex: "tipos de personalização" → os 5
+                # tipos), o submenu aparece. Antes voltava só o texto e o submenu
+                # ficava sem opções ("Qual te interessa?" sem listar nada).
+                return responder(escolha, {}, dados, sessao, mensagem)
         except (ValueError, TypeError):
             pass
 
@@ -455,11 +455,17 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if melhor_score >= 75:
             if sessao:
                 sessao["aguardando_opcao"] = None
-            df_int = dados["intencoes"]
-            row_sub = df_int[df_int["id_intencao"] == melhor_valor]
-            if not row_sub.empty:
-                return row_sub.iloc[0]["resposta_padrao"]
-            return f"Entendido! Registrei: {melhor_valor.replace('_', ' ')}. Como posso continuar te ajudando?"
+            return responder(melhor_valor, {}, dados, sessao, mensagem)
+
+        # "quais são / me mostra as opções / não sei / lista" dentro de um menu →
+        # RE-MOSTRA as opções (em vez de escapar pra fallback ou 'sobre o bot').
+        t_norm = normalizar(mensagem)
+        if re.search(r'\bquais\b|\bquantos\b|\bqual\b.*\b(sao|são|opc|tipo)|'
+                     r'opcoe?s|op[çc][aã]o|me mostra|\bmostra\b|\blista\b|'
+                     r'nao sei|não sei|me ajuda|\btodas\b|\btodos\b', t_norm):
+            lista_opcoes = "\n".join(f"  {i+1}. {c.title()}"
+                                     for i, c in enumerate(opcoes.keys()))
+            return f"Claro! As opções são:\n{lista_opcoes}"
 
         # Não casou nenhuma opção. Antes isso virava um beco-sem-saída ("Não
         # entendi sua escolha" repetido) e o cliente ficava preso no menu. Agora
@@ -939,6 +945,9 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 if sessao:
                     sessao["aguardando_opcao"] = f"menu_{intencao}"
                 opcoes = str(followup).split("|")
+                # tira o rótulo "Escolha uma opção:" que veio colado na 1ª opção
+                opcoes[0] = re.sub(r'(?i)^\s*escolha uma op[çc][aã]o:\s*', '',
+                                   opcoes[0]).strip()
                 lista = "\n".join(f"  {i+1}. {o.strip()}" for i, o in enumerate(opcoes))
                 return f"{resposta}\n{lista}"
             return f"{resposta}\n{followup}"
