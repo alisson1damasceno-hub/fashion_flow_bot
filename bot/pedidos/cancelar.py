@@ -31,18 +31,20 @@ def cancelar_pedido(numero, nome_cliente=None, motivo=""):
 
     Retorna {"sucesso": bool, "mensagem": str, "pedido": dict | None}.
     """
-    df, indice, linha = persistencia.buscar_por_id(numero)
+    # Cancelar vale pro PEDIDO INTEIRO — todos os itens (linhas) do número.
+    df, indices, linhas = persistencia.buscar_itens_por_id(numero)
 
     # 1. O pedido existe?
-    if linha is None:
+    if not linhas:
         return {
             "sucesso": False,
             "mensagem": f"Não encontrei o pedido {numero}. Confere o número?",
             "pedido": None,
         }
 
+    primeira = linhas[0]
     # É desse cliente? (trava de dono)
-    if not persistencia.e_dono(linha, nome_cliente):
+    if not persistencia.e_dono(primeira, nome_cliente):
         return {
             "sucesso": False,
             "mensagem": f"O pedido {numero} não está no seu nome.",
@@ -50,31 +52,34 @@ def cancelar_pedido(numero, nome_cliente=None, motivo=""):
         }
 
     # 2. Já está cancelado?
-    if linha["status"] == "cancelado":
+    if primeira["status"] == "cancelado":
         return {
             "sucesso": False,
             "mensagem": f"O pedido {numero} já estava cancelado.",
-            "pedido": linha,
+            "pedido": primeira,
         }
 
     # 3. Já foi concluído? (não cancela produção pronta por aqui)
-    if linha["status"] == "concluido":
+    if primeira["status"] == "concluido":
         return {
             "sucesso": False,
             "mensagem": f"O pedido {numero} já foi concluído na produção, não dá pra "
                         "cancelar por aqui — fale com o setor de vendas.",
-            "pedido": linha,
+            "pedido": primeira,
         }
 
-    # 4. Marca como cancelado e salva no arquivo (real).
-    df.loc[indice, "status"] = "cancelado"
-    if motivo:
-        df.loc[indice, "observacao"] = f"cancelado: {motivo}"
+    # 4. Marca TODOS os itens como cancelado e salva no arquivo (real).
+    for indice in indices:
+        df.loc[indice, "status"] = "cancelado"
+        if motivo:
+            df.loc[indice, "observacao"] = f"cancelado: {motivo}"
     persistencia.salvar(df)
 
+    n = len(indices)
+    detalhe = "" if n == 1 else f" ({n} itens)"
     return {
         "sucesso": True,
-        "mensagem": f"Pedido {numero} cancelado. (Ele continua no histórico, marcado "
-                    "como cancelado, mas sai da produção.)",
-        "pedido": df.loc[indice].to_dict(),
+        "mensagem": f"Pedido {numero} cancelado{detalhe}. (Continua no histórico, "
+                    "marcado como cancelado, mas sai da produção.)",
+        "pedido": df.loc[indices[0]].to_dict(),
     }

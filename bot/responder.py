@@ -179,26 +179,18 @@ def _fluxo_registrar(slots, sessao, mensagem, dados=None):
                      "alguns dados. " if resumo else "Vamos registrar seu pedido! ")
         return intro + PERGUNTAS_REGISTRO[proximo]
 
-    # 4. Completou → grava no CSV e encerra a coleta DESTE item.
+    # 4. Completou a coleta DESTE item → guarda no CARRINHO (ainda NÃO grava;
+    #    o pedido só fecha quando o cliente disser que não quer mais produtos —
+    #    aí vira UM pedido só, com vários itens).
     sessao["registro_campo_pendente"] = None
     sessao["registro_pedido"] = None
-    reg["cliente"] = sessao.get("nome_cliente", "")   # o dono é o nome da conversa
-    resultado = criar.registrar_pedido(reg)
-    msg = resultado["mensagem"]
-
-    # Guarda o item na "sacola" da conversa e pergunta se quer adicionar mais
-    # produtos (o cliente pode pedir vários numa conversa só).
-    pedido = resultado.get("pedido") or {}
-    numero = pedido.get("numero_pedido", "")
-    if resultado.get("sucesso") and numero:
-        sessao.setdefault("pedidos_da_conversa", []).append({
-            "numero": numero,
-            "resumo": f"{reg.get('quantidade')}x {str(reg.get('produto','')).replace('_',' ')}",
-        })
-        sessao["aguardando_mais_produto"] = True
-        return (msg + " Quer adicionar mais algum produto? "
-                "(me diz o próximo, ou 'não' pra finalizar)")
-    return msg
+    sessao.setdefault("carrinho", []).append(dict(reg))
+    sessao["aguardando_mais_produto"] = True
+    n = len(sessao["carrinho"])
+    resumo = f"{reg.get('quantidade')}x {str(reg.get('produto', '')).replace('_', ' ')} " \
+             f"{str(reg.get('cor', '')).replace('_', ' ')}".strip()
+    return (f"Anotei o item {n}: {resumo}. Quer adicionar mais algum produto a esse "
+            "pedido? (me diz o próximo, ou 'não' pra fechar o pedido)")
 
 
 def _detectar_alteracao(mensagem, slots):
@@ -273,21 +265,16 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
     if intencao == "registrar_pedido":
         return _fluxo_registrar(slots, sessao, mensagem, dados)
 
-    # ── Fecha a "sacola": o cliente não quer mais produtos ───────
+    # ── Fecha o pedido: grava o CARRINHO como UM pedido só (vários itens) ──
     if intencao == "finalizar_pedidos":
-        itens = (sessao or {}).get("pedidos_da_conversa", [])
+        carrinho = (sessao or {}).get("carrinho", [])
         if sessao is not None:
             sessao["aguardando_mais_produto"] = False
-            sessao["pedidos_da_conversa"] = []
-        if not itens:
-            return "Beleza! Qualquer coisa é só chamar."
-        if len(itens) == 1:
-            it = itens[0]
-            return (f"Fechado! Seu pedido {it['numero']} ({it['resumo']}) está "
-                    "registrado. É só acompanhar pelo número. 😊")
-        linhas = "\n".join(f"  • {i['numero']} — {i['resumo']}" for i in itens)
-        return ("Fechado! Registrei estes pedidos nesta conversa:\n" + linhas +
-                "\nGuarde os números pra acompanhar cada um. 😊")
+            sessao["carrinho"] = []
+        if not carrinho:
+            return "Beleza! Qualquer coisa é só chamar. 😊"
+        cliente = (sessao or {}).get("nome_cliente", "")
+        return criar.registrar_pedido_lote(carrinho, cliente)["mensagem"]
 
     # ── Seleção de menu ──────────────────────────────────────────
     if intencao == "selecao_opcao":

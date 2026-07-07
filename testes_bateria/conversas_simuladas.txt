@@ -343,7 +343,7 @@ CONVERSA 23 — Registrar pedido completo
   🧑 algodao
   🤖 [registrar_pedido] Bia, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 bordado
-  🤖 [registrar_pedido] Bia, Pedido registrado! Seu número é FF-2026-0006. Resumo: 100 x camiseta basica preto, tamanho M, em algodao basico, personalização: bordado. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Bia, Anotei o item 1: 100x camiseta basica preto. Quer adicionar mais algum produto a esse pedido? (me diz o próximo, ou 'não' pra fechar o pedido)
 
 ========================================================================
 CONVERSA 24 — Registrar com dados já ditos
@@ -359,7 +359,7 @@ CONVERSA 24 — Registrar com dados já ditos
   🧑 moletom flanelado
   🤖 [registrar_pedido] Bia, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Bia, Pedido registrado! Seu número é FF-2026-0007. Resumo: 50 x moletom preto, tamanho M, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento. Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra finalizar)
+  🤖 [registrar_pedido] Bia, Anotei o item 1: 50x moletom preto. Quer adicionar mais algum produto a esse pedido? (me diz o próximo, ou 'não' pra fechar o pedido)
 
 ========================================================================
 CONVERSA 25 — Status com ID (dono certo)
@@ -407,7 +407,7 @@ CONVERSA 28 — Cancelar pedido (dono certo)
   🧑 quero cancelar meu pedido
   🤖 [cancelar_pedido] Ana, Pra cancelar, me informa o número do pedido (formato FF-AAAA-NNNN). Aviso: cancelamento é livre na modelagem; depois do corte pode haver custo de material já usado.
   🧑 FF-2026-0003
-  🤖 [cancelar_pedido] Ana, Pedido FF-2026-0003 cancelado. (Ele continua no histórico, marcado como cancelado, mas sai da produção.)
+  🤖 [cancelar_pedido] Ana, Pedido FF-2026-0003 cancelado. (Continua no histórico, marcado como cancelado, mas sai da produção.)
 
 ========================================================================
 CONVERSA 29 — Cancelar pedido de outro (trava de dono)
@@ -605,7 +605,15 @@ CONVERSA 45 — Manutenção: encolheu
   🧑 Fabi
   🤖 [captura_nome] Prazer, Fabi! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 minha camiseta encolheu na lavagem
-  🤖 [manut_lavar] Fabi, Lavagem recomendada: máquina em ciclo delicado, água fria (até 30°C), peças do avesso e separadas por cor. Para peças com estampa, sempre do avesso. Não deixe peças molhadas amontoadas — pode manchar.
+  🤖 [manutencao] Fabi, Sobre cuidados com a peça, qual sua dúvida?
+  1. Escolha uma opção: Como lavar
+  2. Ferro de passar
+  3. Secadora
+  4. Alvejante
+  5. Tirar mancha
+  6. Cuidados por tecido
+  7. Encolhimento
+  8. Desbotamento
 
 ========================================================================
 CONVERSA 46 — Tecido pra pele sensível

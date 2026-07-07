@@ -56,7 +56,7 @@ def criar_sessao():
         "alteracao_pendente": None,     # {campo, valor} guardado até o cliente mandar o ID
         "registro_pedido": None,        # dados coletados do pedido em registro (CREATE), ou None
         "registro_campo_pendente": None,  # campo que estamos perguntando agora
-        "pedidos_da_conversa": [],       # itens já registrados nesta conversa (a "sacola")
+        "carrinho": [],                  # itens do pedido em montagem (vários produtos, 1 pedido)
         "aguardando_mais_produto": False,  # esperando resposta de "quer adicionar mais?"
         # ── mapa de estados da conversa (ver bot/estados.py) ────────
         "estado_conversa": "OCIOSO",     # ONDE estamos no diálogo
@@ -81,7 +81,7 @@ def resetar_sessao(sessao):
     sessao["alteracao_pendente"] = None
     sessao["registro_pedido"] = None
     sessao["registro_campo_pendente"] = None
-    sessao["pedidos_da_conversa"] = []
+    sessao["carrinho"] = []
     sessao["aguardando_mais_produto"] = False
     sessao["estado_conversa"] = "OCIOSO"
     sessao["objetivo_usuario"] = None

@@ -42,9 +42,10 @@ def consultar_pedido(numero, nome_cliente=None):
     - achou      → sucesso=True, mensagem com produto/quantidade/etapa/previsão.
     - não achou  → sucesso=False, mensagem pedindo pra conferir o número.
     """
-    df, indice, linha = persistencia.buscar_por_id(numero)
+    # Um pedido pode ter VÁRIOS itens (mesmo número, várias linhas).
+    df, indices, linhas = persistencia.buscar_itens_por_id(numero)
 
-    if linha is None:
+    if not linhas:
         return {
             "sucesso": False,
             "mensagem": f"Não encontrei o pedido {numero}. Confere o número? "
@@ -52,41 +53,47 @@ def consultar_pedido(numero, nome_cliente=None):
             "pedido": None,
         }
 
-    # Trava de dono: só mostra o pedido se ele for desse cliente.
-    if not persistencia.e_dono(linha, nome_cliente):
+    # As infos de andamento (etapa/status/previsão/dono) são do pedido todo —
+    # pegamos da primeira linha; os itens em si variam de linha pra linha.
+    primeira = linhas[0]
+    if not persistencia.e_dono(primeira, nome_cliente):
         return {
             "sucesso": False,
             "mensagem": f"O pedido {numero} não está no seu nome. Confere o número?",
             "pedido": None,
         }
 
-    etapa = linha["etapa_atual"]
-    info = _info_etapa(etapa)
-    pode_alterar = info.get("pode_alterar", "nao") == "sim"
+    etapa = primeira["etapa_atual"]
+    pode_alterar = _info_etapa(etapa).get("pode_alterar", "nao") == "sim"
 
-    # Monta a frase do "situação" conforme o status macro do pedido.
-    if linha["status"] == "cancelado":
+    if primeira["status"] == "cancelado":
         situacao = "Esse pedido está CANCELADO."
-    elif linha["status"] == "concluido":
+    elif primeira["status"] == "concluido":
         situacao = "Esse pedido já está CONCLUÍDO na produção (embalado e pronto)."
     else:
         situacao = f"Etapa atual de fabricação: {etapa.replace('_', ' ')}."
 
-    # Só falamos de "alterar" se o pedido ainda está em produção. Cancelado ou
-    # concluído não cabe dizer "ainda dá pra alterar".
-    if linha["status"] in ("cancelado", "concluido"):
+    if primeira["status"] in ("cancelado", "concluido"):
         alteravel = ""
     elif pode_alterar:
         alteravel = "Ainda dá pra alterar (está na modelagem)."
     else:
         alteravel = "Nesta etapa não dá mais pra alterar."
 
+    def _item_txt(l):
+        return (f"{l['quantidade']} x {l['produto'].replace('_', ' ')} "
+                f"{l['cor'].replace('_', ' ')}, tamanho {l['tamanho']}").strip()
+
+    if len(linhas) == 1:
+        conteudo = _item_txt(linhas[0])
+    else:
+        conteudo = f"{len(linhas)} itens → " + "; ".join(
+            f"item {l['item']}: {_item_txt(l)}" for l in linhas)
+
     msg = (
-        f"Pedido {linha['numero_pedido']}: {linha['quantidade']} x "
-        f"{linha['produto'].replace('_', ' ')} {linha['cor'].replace('_', ' ')}, "
-        f"tamanho {linha['tamanho']}. {situacao} "
-        f"Previsão de término na produção: {linha['data_prevista']}."
+        f"Pedido {numero}: {conteudo}. {situacao} "
+        f"Previsão de término na produção: {primeira['data_prevista']}."
         f"{(' ' + alteravel) if alteravel else ''} "
         "(O status de entrega quem informa é a logística.)"
     )
-    return {"sucesso": True, "mensagem": msg, "pedido": linha}
+    return {"sucesso": True, "mensagem": msg, "pedido": primeira, "itens": linhas}

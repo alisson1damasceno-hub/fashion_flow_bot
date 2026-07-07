@@ -25,8 +25,8 @@ CAMINHO_ETAPAS = Path(__file__).resolve().parent.parent.parent / "data" / "looku
 # Ordem oficial das colunas. Usada ao criar uma linha nova, pra garantir que os
 # valores entrem na ordem certa.
 COLUNAS = [
-    "numero_pedido", "data_criacao", "cliente", "produto", "quantidade", "cor",
-    "tamanho", "tecido", "personalizacao", "etapa_atual", "status",
+    "numero_pedido", "item", "data_criacao", "cliente", "produto", "quantidade",
+    "cor", "tamanho", "tecido", "personalizacao", "etapa_atual", "status",
     "data_prevista", "observacao",
 ]
 
@@ -79,6 +79,20 @@ def buscar_por_id(numero):
         return df, None, None
     i = indices[0]
     return df, i, df.loc[i].to_dict()
+
+
+def buscar_itens_por_id(numero):
+    """
+    Como um pedido pode ter VÁRIOS itens (várias linhas com o mesmo numero_pedido),
+    devolve TODOS os itens: (df, [índices], [dicts das linhas]) — ordenados por item.
+    Vazio se não achar.
+    """
+    df = carregar()
+    numero = (numero or "").strip().upper()
+    indices = df.index[df["numero_pedido"].str.upper() == numero].tolist()
+    indices.sort(key=lambda i: str(df.loc[i].get("item", "")))
+    linhas = [df.loc[i].to_dict() for i in indices]
+    return df, indices, linhas
 
 
 def gerar_id(df=None, ano=None):
