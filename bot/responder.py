@@ -33,20 +33,51 @@ PERGUNTAS_REGISTRO = {
 ABORTAR_REGISTRO = {"cancelar", "parar", "sair", "deixa pra la", "esquece", "esquecer", "desistir"}
 
 
-def _valor_cru(mensagem, campo):
+# Rótulo amigável de cada campo, pra mensagem de "isso não parece X".
+ROTULO_CAMPO = {
+    "produto": "um produto", "quantidade": "uma quantidade", "cor": "uma cor",
+    "tamanho": "um tamanho", "tecido": "um tecido", "personalizacao": "uma personalização",
+}
+
+
+def _valor_campo(mensagem, campo):
     """
-    Quando o extractor não reconhece a resposta do campo perguntado, usamos o
-    texto cru da mensagem. Para 'quantidade', pegamos só o primeiro número.
+    VALIDA a resposta do cliente para o campo perguntado no registro. Devolve o
+    valor se for plausível, ou None se não for (aí o bot re-pergunta em vez de
+    gravar lixo). Conserta o bug de "quais outros produtos tem" virar a cor.
+
+    Obs: cor/tecido/personalização específicos já vêm pelo EXTRACTOR (passo 1 do
+    fluxo). Aqui a gente só trata o texto cru: número, tamanho, 'nenhuma' e
+    'tanto faz'. Cor/tecido arbitrário NÃO é aceito cru (o extractor conhece o
+    vocabulário — se não pegou, não é uma cor/tecido válido).
     """
-    t = (mensagem or "").strip()
+    t = normalizar((mensagem or "").strip())
+    if not t:
+        return None
+    indiferente = bool(re.search(r'tanto faz|qualquer|indiferente|voce (que )?escolh|'
+                                 r'nao sei|o (mais )?comum|padrao', t))
     if campo == "quantidade":
         m = re.search(r"\d+", t)
         return m.group(0) if m else None
     if campo == "tamanho":
-        # Tamanhos curtos (P, M, G, GG, XGG) ficam em maiúsculo; grades por
-        # extenso (infantil, plus size) ficam em minúsculo.
-        return t.upper() if len(t) <= 3 else normalizar(t)
-    return normalizar(t) or None
+        if re.search(r'plus|g1|g2|g3|g4', t):
+            return "plus_size"
+        if re.search(r'infantil|crianca|kids', t):
+            return "infantil"
+        m = re.fullmatch(r'(pp|p|m|g|gg|xgg)', t.replace(" ", ""))
+        if m:
+            return m.group(0).upper()
+        if "adulto" in t or indiferente:
+            return "adulto"
+        return None
+    if campo == "personalizacao":
+        if re.search(r'nenhuma|sem person|sem estamp|nao quero nada|\bnenhum\b|'
+                     r'\bnao\b|\bsem\b', t) or indiferente:
+            return "nenhuma"
+        return None   # silk/dtf/bordado vêm pelo extractor
+    if campo in ("cor", "tecido"):
+        return "a definir" if indiferente else None
+    return None
 
 
 def _fluxo_registrar(slots, sessao, mensagem):
@@ -72,12 +103,17 @@ def _fluxo_registrar(slots, sessao, mensagem):
             reg[campo] = slots[campo]
 
     # 2. Se estávamos esperando um campo específico e o extractor não pegou,
-    #    usa o texto cru da resposta (ex: "M" para tamanho, "nenhuma" p/ personalização).
+    #    VALIDA o texto cru (ex: "M" p/ tamanho, "nenhuma" p/ personalização). Se
+    #    não for um valor plausível (ex: o cliente perguntou outra coisa), NÃO grava
+    #    — marca como inválido pra re-perguntar, em vez de virar lixo no pedido.
     pendente = sessao.get("registro_campo_pendente")
+    invalido = False
     if pendente and not reg.get(pendente) and not primeiro:
-        cru = _valor_cru(mensagem, pendente)
-        if cru:
-            reg[pendente] = cru
+        valor = _valor_campo(mensagem, pendente)
+        if valor:
+            reg[pendente] = valor
+        else:
+            invalido = True
 
     sessao["registro_pedido"] = reg
 
@@ -87,6 +123,11 @@ def _fluxo_registrar(slots, sessao, mensagem):
         proximo = faltando[0]
         sessao["registro_campo_pendente"] = proximo
         intro = ""
+        if invalido and proximo == pendente:
+            # o cliente respondeu algo que não serve pro campo (ex: fez outra
+            # pergunta no meio do pedido) → re-pergunta, sem gravar lixo.
+            return (f"Hmm, isso não parece {ROTULO_CAMPO.get(pendente, 'uma resposta válida')}. "
+                    f"{PERGUNTAS_REGISTRO[proximo]} (ou digite 'cancelar' pra sair do pedido)")
         if primeiro:
             # confirma o que já entendeu no pedido (ex: "100x camiseta em linho")
             partes = []
