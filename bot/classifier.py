@@ -160,7 +160,10 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
                  r'acompanhar (o )?(meu )?pedido|onde esta (o )?meu pedido|'
                  r'andamento d[oae] (meu )?pedido|fase d[oae] (meu )?pedido|'
                  r'etapa d[oae] (meu )?pedido|saiu do corte|foi para a costura|'
-                 r'esta no corte|esta na costura|meu lote', t):
+                 r'esta no corte|esta na costura|meu lote|'
+                 # formas soltas: "quero acompanhar", "como ta o andamento",
+                 # "como ta meu pedido", "ja terminou o pedido"
+                 r'\bacompanhar\b|\bandamento\b|como (ta|esta) (o )?(meu )?pedido', t):
         return "status_pedido"
 
     # ── 1b. Pediram algo FORA do catálogo (moto, sapato, geladeira...) ──
@@ -343,8 +346,10 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
             return "prazo_urgente"
 
     # "premium" (a camiseta premium) → detalhe do produto (da tabela produtos.csv),
-    # não o catálogo inteiro de camisetas repetido.
-    if produto == "camiseta_premium" and re.search(r'\bpremium\b', t):
+    # não o catálogo inteiro de camisetas. Basta o extractor ter resolvido o
+    # produto como camiseta_premium (cobre "camisas premium", typo "premiun" etc);
+    # pedido com quantidade já virou registrar_pedido lá em cima.
+    if produto == "camiseta_premium":
         return "produto_detalhe"
 
     # "qual/quais tecido(s) pra <produto>" → lista os tecidos que combinam com o

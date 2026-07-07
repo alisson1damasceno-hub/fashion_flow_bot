@@ -26,6 +26,13 @@ UNIDADES_QTD = (
 # Ordem importa: chaves mais específicas vêm primeiro pra não serem
 # engolidas por chaves curtas (ex: "camiseta premium" antes de "camiseta").
 PRODUTOS = [
+    # "camisa(s)/camiseta(s) premium" e "premiun" (typo) = a camiseta premium.
+    # Vêm PRIMEIRO pra vencer o "camisas" genérico no empate de posição (senão
+    # "camisas premium" caía em camiseta_basica e perdia o detalhe da premium).
+    ("camisetas? premium", "camiseta_premium"),
+    ("camisas? premium", "camiseta_premium"),
+    ("camisetas? premiun", "camiseta_premium"),
+    ("camisas? premiun", "camiseta_premium"),
     # mais específicos primeiro
     ("camiseta premium", "camiseta_premium"),
     ("camiseta basica", "camiseta_basica"),
@@ -55,6 +62,8 @@ PRODUTOS = [
     ("jalecos?", "uniforme_jaleco"),
     ("oversized", "oversized"),
     ("premium", "camiseta_premium"),   # "premium" sozinho = a camiseta premium
+    ("premiun", "camiseta_premium"),   # typos comuns
+    ("premim", "camiseta_premium"),
 ]
 
 # ── Personalizações ────────────────────────────────────────────────
