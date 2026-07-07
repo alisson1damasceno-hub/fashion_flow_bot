@@ -233,9 +233,9 @@ def extrair_slots(mensagem, em_menu=False):
     if valor:
         slots["tecido"] = valor
 
-    # ── Passo 7: cor ─────────────────────────────────────────────
+    # ── Passo 7: cor (aceita plural: "pretas", "brancos", "vermelhos") ──
     for chave, valor in CORES:
-        if re.search(rf"\b{chave}\b", t):
+        if re.search(rf"\b{chave}s?\b", t):
             slots["cor"] = valor
             break
 

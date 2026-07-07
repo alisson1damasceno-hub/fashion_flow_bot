@@ -108,6 +108,15 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
         # Registro de pedido (CREATE) em andamento → continua coletando os campos.
         if sessao.get("registro_pedido") is not None:
             return "registrar_pedido"
+        # Acabou de registrar um item e perguntamos "quer mais um produto?".
+        if sessao.get("aguardando_mais_produto"):
+            if re.search(r'\bnao\b|\bnão\b|\bnn\b|so isso|nada mais|mais nada|'
+                         r'finaliz|encerr|pode fechar|e so|era so|chega|ta bom|'
+                         r'\bnop\b', t):
+                return "finalizar_pedidos"
+            # qualquer outra coisa (um "sim" ou já um novo produto) → novo item
+            sessao["aguardando_mais_produto"] = False
+            return "registrar_pedido"
         # Pedimos um ID antes e ele chegou agora → executa a ação que ficou pendente
         # (consultar / cancelar / alterar). Guardada em sessao["aguardando_id"].
         acao_pendente = sessao.get("aguardando_id")
@@ -128,7 +137,7 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     # ("quero fazer um pedido", "registrar pedido", "novo pedido"...)
     if re.search(r'\b(registrar|cadastrar|abrir|criar)\b.*\bpedido\b', t) or \
        re.search(r'\b(fazer|faz)\b.*\bpedido\b', t) or \
-       re.search(r'\bnovo pedido\b', t):
+       re.search(r'\b(novo|outro|mais um|mais) pedido\b', t):
         return "registrar_pedido"
 
     # CREATE implícito: o cliente já está PEDINDO/ENCOMENDANDO, não só perguntando.

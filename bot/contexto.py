@@ -56,6 +56,8 @@ def criar_sessao():
         "alteracao_pendente": None,     # {campo, valor} guardado até o cliente mandar o ID
         "registro_pedido": None,        # dados coletados do pedido em registro (CREATE), ou None
         "registro_campo_pendente": None,  # campo que estamos perguntando agora
+        "pedidos_da_conversa": [],       # itens já registrados nesta conversa (a "sacola")
+        "aguardando_mais_produto": False,  # esperando resposta de "quer adicionar mais?"
         # ── mapa de estados da conversa (ver bot/estados.py) ────────
         "estado_conversa": "OCIOSO",     # ONDE estamos no diálogo
         "objetivo_usuario": None,        # O QUE o usuário quer (meta grande)
@@ -79,6 +81,8 @@ def resetar_sessao(sessao):
     sessao["alteracao_pendente"] = None
     sessao["registro_pedido"] = None
     sessao["registro_campo_pendente"] = None
+    sessao["pedidos_da_conversa"] = []
+    sessao["aguardando_mais_produto"] = False
     sessao["estado_conversa"] = "OCIOSO"
     sessao["objetivo_usuario"] = None
     sessao["ultimo_assunto"] = None
@@ -134,6 +138,11 @@ def atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, respo
     if intencao in INTENCOES_PEDIDO and sessao.get("ultimo_assunto") in INTENCOES_ORCAMENTO:
         novo_foco.pop("produto", None)
         novo_foco.pop("quantidade", None)
+
+    # Acabou de registrar um item e vamos perguntar "quer mais um produto?" →
+    # zera o foco pra o PRÓXIMO produto não herdar os dados do anterior.
+    if sessao.get("aguardando_mais_produto"):
+        novo_foco = {}
 
     sessao["foco_atual"] = novo_foco
 

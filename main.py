@@ -82,8 +82,9 @@ def main():
             sessao = resetar_sessao(sessao)
             continue
 
-        # Casual ("ok", "blz", "obrigado") → não muda assunto
-        if is_casual(mensagem) and sessao["ativa"]:
+        # Casual ("ok", "blz", "obrigado") → não muda assunto. Exceção: quando
+        # estamos perguntando "quer mais um produto?", "sim" inicia o próximo item.
+        if is_casual(mensagem) and sessao["ativa"] and not sessao.get("aguardando_mais_produto"):
             print("Bot: Beleza, pode continuar!\n")
             continue
 
