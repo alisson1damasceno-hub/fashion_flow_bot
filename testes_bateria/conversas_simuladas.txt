@@ -343,7 +343,7 @@ CONVERSA 23 — Registrar pedido completo
   🧑 algodao
   🤖 [registrar_pedido] Bia, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 bordado
-  🤖 [registrar_pedido] Bia, Pedido registrado! Seu número é FF-2026-0006. Resumo: 100 x camiseta basica preto, tamanho M, em algodao basico, personalização: bordado. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-26. Guarde esse número para consultar o andamento.
+  🤖 [registrar_pedido] Bia, Pedido registrado! Seu número é FF-2026-0006. Resumo: 100 x camiseta basica preto, tamanho M, em algodao basico, personalização: bordado. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento.
 
 ========================================================================
 CONVERSA 24 — Registrar com dados já ditos
@@ -353,13 +353,13 @@ CONVERSA 24 — Registrar com dados já ditos
   🧑 Bia
   🤖 [captura_nome] Prazer, Bia! Sou o assistente do setor de produção da Fashion Flow. Em que posso te ajudar?
   🧑 quero fazer um pedido de 50 moletons pretos
-  🤖 [registrar_pedido] Bia, Vamos registrar seu pedido! Qual cor? (ex: preto, branco, marinho, vermelho...)
+  🤖 [registrar_pedido] Bia, Boa, anotei: 50x moletom. Vou registrar seu pedido — só faltam alguns dados. Qual cor? (ex: preto, branco, marinho, vermelho...)
   🧑 M
   🤖 [registrar_pedido] Bia, Qual tamanho ou grade? (ex: M, G, infantil, plus size...)
   🧑 moletom flanelado
   🤖 [registrar_pedido] Bia, Qual personalização? (bordado, silk, DTF — ou responda 'nenhuma')
   🧑 nenhuma
-  🤖 [registrar_pedido] Bia, Pedido registrado! Seu número é FF-2026-0007. Resumo: 50 x moletom m, tamanho moletom flanelado, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-26. Guarde esse número para consultar o andamento.
+  🤖 [registrar_pedido] Bia, Pedido registrado! Seu número é FF-2026-0007. Resumo: 50 x moletom m, tamanho moletom flanelado, em moletom flanelado, personalização: nenhuma. Ele começa na etapa de modelagem; previsão de término na produção: 2026-07-27. Guarde esse número para consultar o andamento.
 
 ========================================================================
 CONVERSA 25 — Status com ID (dono certo)

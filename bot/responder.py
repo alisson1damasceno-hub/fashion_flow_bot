@@ -86,7 +86,21 @@ def _fluxo_registrar(slots, sessao, mensagem):
     if faltando:
         proximo = faltando[0]
         sessao["registro_campo_pendente"] = proximo
-        intro = "Vamos registrar seu pedido! " if primeiro else ""
+        intro = ""
+        if primeiro:
+            # confirma o que já entendeu no pedido (ex: "100x camiseta em linho")
+            partes = []
+            if reg.get("quantidade") and reg.get("produto"):
+                partes.append(f"{reg['quantidade']}x {reg['produto'].replace('_', ' ')}")
+            elif reg.get("produto"):
+                partes.append(reg["produto"].replace("_", " "))
+            if reg.get("cor"):
+                partes.append(reg["cor"].replace("_", " "))
+            if reg.get("tecido"):
+                partes.append("em " + reg["tecido"].replace("_", " "))
+            resumo = ", ".join(partes)
+            intro = (f"Boa, anotei: {resumo}. Vou registrar seu pedido — só faltam "
+                     "alguns dados. " if resumo else "Vamos registrar seu pedido! ")
         return intro + PERGUNTAS_REGISTRO[proximo]
 
     # 4. Completou → grava no CSV e encerra o fluxo de registro.

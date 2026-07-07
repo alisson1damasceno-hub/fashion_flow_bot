@@ -131,6 +131,20 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
        re.search(r'\bnovo pedido\b', t):
         return "registrar_pedido"
 
+    # CREATE implícito: o cliente já está PEDINDO/ENCOMENDANDO, não só perguntando.
+    # "quero 100 camisas de linho", "vou querer", "quero comprar 200 polos". O bot
+    # tem que SAIR do modo informação e começar a registrar (aproveitando produto/
+    # quantidade/tecido já ditos). Distingue de "quero SABER/ver/quanto custa".
+    if not re.search(r'\bsaber\b|\bver\b|\bconhec\w+|\bsobre\b|informac|d[uú]vida|'
+                     r'\bquais\b|\bqual\b|\bcomo\b|\bquanto\b|\bpreco\b|\bpreço\b', t):
+        frase_pedido = re.search(
+            r'\bvou querer\b|\bvou levar\b|\bvou fechar\b|\bpode fechar\b|'
+            r'\bfechar (o )?pedido\b|\bencomend\w+|\bquero (fazer|fechar)\b', t)
+        verbo_querer = re.search(r'\b(quero|queria|comprar|pedir)\b', t)
+        if frase_pedido or (verbo_querer and slots_efetivos.get("produto")
+                            and slots_efetivos.get("quantidade")):
+            return "registrar_pedido"
+
     # Obs: "avançar etapa" NÃO é ação do cliente (é da produção interna), então
     # não tem regra de chat aqui. A função existe em bot/pedidos/atualizar.py e é
     # exercitada pelos testes e pela demo, mas o cliente não dispara isso conversando.
