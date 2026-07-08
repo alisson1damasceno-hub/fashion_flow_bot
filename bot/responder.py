@@ -210,12 +210,33 @@ def _slots_registro_do_turno(mensagem):
     return reg
 
 
+_MARCADORES_TROCA = re.compile(
+    r'\b(na verdade|muda|mudar|troca|trocar|corrig|na real|seria|prefiro)\b'
+)
+
+
 def _preencher_campos_fora_de_ordem(reg, mensagem):
-    """Aproveita campos válidos mesmo quando o cliente respondeu fora da ordem."""
+    """Aproveita campos válidos mesmo quando o cliente respondeu fora da ordem.
+
+    Também trata TROCA no meio do fluxo: se o cliente diz produto novo E há
+    marcador de correção ("na verdade, moletom"), substituímos o produto e
+    esquecemos os slots-filhos que podem ficar inconsistentes (tecido, cor,
+    tamanho — grade do adulto do produto antigo pode não valer pro novo).
+    """
     novos = _slots_registro_do_turno(mensagem)
+    marcador = bool(_MARCADORES_TROCA.search(normalizar(mensagem)))
     for campo, valor in novos.items():
-        if campo in CAMPOS_REGISTRO and not reg.get(campo):
+        if campo not in CAMPOS_REGISTRO:
+            continue
+        if not reg.get(campo):
             reg[campo] = valor
+        elif marcador and reg.get(campo) != valor:
+            # Correção explícita → substitui o valor.
+            reg[campo] = valor
+            # Se trocou o PRODUTO, invalida slots-filhos que dependem dele.
+            if campo == "produto":
+                for filho in ("tecido", "cor", "tamanho", "personalizacao"):
+                    reg.pop(filho, None)
     return novos
 
 def _valor_campo(mensagem, campo):
