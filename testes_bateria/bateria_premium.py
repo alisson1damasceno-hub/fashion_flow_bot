@@ -7,7 +7,7 @@ a info da premium). Roda pelo pipeline real e categoriza a resposta.
 import os
 import sys
 
-BOT = "/Users/marciabeatriz/Documents/Faculdade/fashion_flow_bot"
+BOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, BOT)
 
 from bot.loader import carregar_dados
@@ -79,7 +79,7 @@ def responder_uma(pergunta, contexto_camiseta=False):
     if contexto_camiseta:
         s["foco_atual"] = {"produto": "camiseta_basica"}
     st = extrair_slots(pergunta, em_menu=False)
-    se = merge_com_contexto(st, s)
+    se = merge_com_contexto(st, s, msg)
     it = classificar(pergunta, st, se, DADOS["intencoes"], s)
     r = responder(it, se, DADOS, s, pergunta)
     return it, r

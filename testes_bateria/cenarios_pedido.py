@@ -14,7 +14,7 @@ import shutil
 import sys
 import tempfile
 
-BOT = "/Users/marciabeatriz/Documents/Faculdade/fashion_flow_bot"
+BOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, BOT)
 
 from bot.pedidos import persistencia
@@ -47,7 +47,7 @@ def run_turn(sessao, msg):
         return "(casual)", "Beleza, pode continuar!"
     em = bool(sessao.get("aguardando_opcao"))
     st = extrair_slots(msg, em_menu=em)
-    se = merge_com_contexto(st, sessao)
+    se = merge_com_contexto(st, sessao, msg)
     it = classificar(msg, st, se, DADOS["intencoes"], sessao)
     r = responder(it, se, DADOS, sessao, msg)
     r = personalizar(r, sessao)

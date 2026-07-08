@@ -17,7 +17,7 @@ import os
 import sys
 from collections import Counter, defaultdict
 
-BOT_DIR = "/Users/marciabeatriz/Documents/Faculdade/fashion_flow_bot"
+BOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, BOT_DIR)
 
 from bot.loader import carregar_dados
@@ -128,7 +128,7 @@ def responder_uma(dados, pergunta):
         return "(casual)", "Beleza, pode continuar!"
 
     slots_turno = extrair_slots(pergunta, em_menu=False)
-    slots_efetivos = merge_com_contexto(slots_turno, sessao)
+    slots_efetivos = merge_com_contexto(slots_turno, sessao, pergunta)
     intencao = classificar(pergunta, slots_turno, slots_efetivos, dados["intencoes"], sessao)
     resposta = responder(intencao, slots_efetivos, dados, sessao, pergunta)
     return intencao, resposta
