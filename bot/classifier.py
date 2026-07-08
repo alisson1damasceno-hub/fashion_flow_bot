@@ -831,4 +831,14 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if sessao and sessao.get("aguardando_id"):
         return sessao.get("aguardando_id")
 
+    # Fallback CONTEXTUAL: se o foco tem produto herdado (o cliente já falou desse
+    # produto antes), cair no catálogo dele em vez de "não entendi" genérico.
+    # Efeito prático: cliente diz "e X?" fora de padrão conhecido — em vez de
+    # fallback, ele recebe algo útil sobre o que já estava conversando.
+    foco_produto = slots_efetivos.get("produto")
+    if foco_produto in _CAT_POR_PRODUTO:
+        return _CAT_POR_PRODUTO[foco_produto]
+    if slots_efetivos.get("tecido"):
+        return "tecidos"
+
     return "fallback"

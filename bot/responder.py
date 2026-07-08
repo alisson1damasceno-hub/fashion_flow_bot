@@ -1304,6 +1304,15 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         return resposta
 
     # ── Fallback ─────────────────────────────────────────────────
+    # Se a sessão tem produto no foco, cita o produto e oferece caminhos concretos
+    # (Grice/relevância — evita mensagem genérica quando há contexto).
+    foco_produto = (slots or {}).get("produto") or (sessao or {}).get("foco_atual", {}).get("produto")
+    if foco_produto:
+        nome_produto = foco_produto.replace("_", " ")
+        return (
+            f"Não peguei essa. Sobre {nome_produto}, quer saber preço, prazo, "
+            "cores, tecidos, personalização ou cuidados? É só me dizer qual desses."
+        )
     return (
         "Não entendi bem sua pergunta. Posso ajudar com: "
         "prazos, preços, tecidos, personalização, compatibilidade, "
