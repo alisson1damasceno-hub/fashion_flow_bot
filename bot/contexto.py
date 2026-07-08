@@ -63,6 +63,10 @@ def criar_sessao():
         "estado_conversa": "OCIOSO",     # ONDE estamos no diálogo
         "objetivo_usuario": None,        # O QUE o usuário quer (meta grande)
         "ultimo_assunto": None,
+        # Últimas intenções enviadas (mais recente por último). Usado pelo
+        # responder pra variar setor_* repetido — sem isso, "preço?"/"valor?"/
+        # "quanto?" geram texto idêntico 3x seguidas (Grice, Quantity/Relation).
+        "ultimas_intencoes": [],
         # ── score de confiança / re-ranking (ver classifier.pontuar_candidatas) ──
         "intencao_candidatas": [],       # top intenções com score, do último turno
         "confianca": 0.0,                # score da intenção mais forte
@@ -87,6 +91,7 @@ def resetar_sessao(sessao):
     sessao["estado_conversa"] = "OCIOSO"
     sessao["objetivo_usuario"] = None
     sessao["ultimo_assunto"] = None
+    sessao["ultimas_intencoes"] = []
     sessao["ativa"] = False
     return sessao
 
@@ -199,6 +204,14 @@ def atualizar_sessao_pos_turno(sessao, mensagem, slots_efetivos, intencao, respo
     # ultimo_assunto: ignora seleções de menu (preserva o assunto real anterior)
     if intencao != "selecao_opcao":
         sessao["ultimo_assunto"] = intencao
+
+    # Buffer curto de intenções pra o responder detectar repetição e variar.
+    # Guarda no máximo 5. Ignora seleções de menu (que costumam vir intercaladas).
+    if intencao != "selecao_opcao":
+        buf = sessao.setdefault("ultimas_intencoes", [])
+        buf.append(intencao)
+        if len(buf) > 5:
+            del buf[:-5]
 
     if intencao in {"qualidade_defeito", "prazo_atraso", "status_pedido", "prazo_urgente"}:
         sessao["problema_cliente"] = {

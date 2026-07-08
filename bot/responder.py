@@ -491,35 +491,75 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             "Se você já tem um pedido, me envie o número FF-AAAA-NNNN. Se ainda é orçamento, me diga produto, quantidade e data limite."
         )
 
-    if intencao == "setor_vendas":
-        perfil = (sessao or {}).get("perfil_recomendacao", {})
-        if perfil.get("prioridade") == "preco":
-            return (
+    if intencao in {"setor_vendas", "setor_logistica", "setor_devolucao", "setor_compras"}:
+        # Dedupe: 2ª/3ª ocorrência consecutiva do mesmo setor gera resposta variada
+        # (Grice: Quantity/Relation — não repetir e oferecer próximo passo útil).
+        buf = (sessao or {}).get("ultimas_intencoes", [])
+        repeticoes = 0
+        for prev in reversed(buf):
+            if prev == intencao:
+                repeticoes += 1
+            else:
+                break
+
+        if intencao == "setor_vendas":
+            perfil = (sessao or {}).get("perfil_recomendacao", {})
+            base = (
                 "Pensando em menor preço, normalmente camiseta básica ou polo simples sem muitas cores de personalização "
                 "fica mais em conta. Para comparar valor final, vendas precisa de produto, quantidade, logo/personalização e prazo."
+            ) if perfil.get("prioridade") == "preco" else (
+                "Para preço, valor final, pagamento, desconto ou fechamento, vendas confirma a proposta. "
+                "Se você me disser produto, quantidade e personalização, eu consigo dar uma estimativa antes."
             )
-        return (
-            "Para preço, valor final, pagamento, desconto ou fechamento, vendas confirma a proposta. "
-            "Se você me disser produto, quantidade e personalização, eu consigo dar uma estimativa antes."
-        )
+            if repeticoes == 1:
+                return (
+                    "Como te falei, o fechamento de valor é com vendas. Mas se você me disser produto, "
+                    "quantidade e personalização, eu já te dou uma estimativa aqui — evita esperar pra saber."
+                )
+            if repeticoes >= 2:
+                return (
+                    "Pra não ficar em círculo: me passa produto, quantidade e personalização "
+                    "(mesmo que aproximado) que eu estimo pra você. Se preferir, posso chamar uma pessoa de vendas."
+                )
+            return base
 
-    if intencao == "setor_logistica":
-        return (
-            "Isso fica com logística: frete, envio, rastreio e prazo de entrega dependem do endereço e da transportadora. "
-            "Se você já tem pedido, me informe o número FF-AAAA-NNNN; se ainda não fechou, vendas calcula o frete no orçamento."
-        )
+        if intencao == "setor_logistica":
+            if repeticoes == 1:
+                return (
+                    "Como comentei, entrega/frete/rastreio quem confirma é logística. "
+                    "Se você me passar o número FF-AAAA-NNNN e o CEP, eu consigo verificar prazo estimado."
+                )
+            if repeticoes >= 2:
+                return (
+                    "Ainda depende de logística pra dar valor exato. Me diz o CEP e "
+                    "o número do pedido (FF-AAAA-NNNN) que peço pra alguém retornar."
+                )
+            return (
+                "Isso fica com logística: frete, envio, rastreio e prazo de entrega dependem do endereço e da transportadora. "
+                "Se você já tem pedido, me informe o número FF-AAAA-NNNN; se ainda não fechou, vendas calcula o frete no orçamento."
+            )
 
-    if intencao == "setor_devolucao":
-        return (
-            "Para troca, devolução, tamanho errado ou problema na peça recebida, o próximo passo é abrir análise do pedido. "
-            "Me envie o número FF-AAAA-NNNN e explique o que veio errado; com isso a equipe verifica troca, ajuste ou devolução."
-        )
+        if intencao == "setor_devolucao":
+            if repeticoes >= 1:
+                return (
+                    "Pra devolução/troca eu preciso do número do pedido (FF-AAAA-NNNN) "
+                    "e do motivo. Com isso, encaminho pra equipe de qualidade avaliar."
+                )
+            return (
+                "Para troca, devolução, tamanho errado ou problema na peça recebida, o próximo passo é abrir análise do pedido. "
+                "Me envie o número FF-AAAA-NNNN e explique o que veio errado; com isso a equipe verifica troca, ajuste ou devolução."
+            )
 
-    if intencao == "setor_compras":
-        return (
-            "Se você quer vender ou fornecer tecido para a Fashion Flow, isso é assunto de compras. "
-            "O ideal é enviar tipo de material, composição, ficha técnica, capacidade de fornecimento e contato comercial."
-        )
+        if intencao == "setor_compras":
+            if repeticoes >= 1:
+                return (
+                    "Ainda é assunto de compras. Se puder me passar tipo de tecido, ficha técnica "
+                    "e volume, eu encaminho o contato direto pra evitar mais idas e vindas."
+                )
+            return (
+                "Se você quer vender ou fornecer tecido para a Fashion Flow, isso é assunto de compras. "
+                "O ideal é enviar tipo de material, composição, ficha técnica, capacidade de fornecimento e contato comercial."
+            )
 
     if intencao == "setor_almoxarifado":
         return (
