@@ -64,7 +64,7 @@ def conversa(mensagens, nome=None):
             continue
         em_menu = bool(sessao.get("aguardando_opcao"))
         slots_turno = extrair_slots(msg, em_menu=em_menu)
-        slots_efetivos = merge_com_contexto(slots_turno, sessao)
+        slots_efetivos = merge_com_contexto(slots_turno, sessao, msg)
         intencao = classificar(msg, slots_turno, slots_efetivos, dados["intencoes"], sessao)
         resposta = personalizar(responder(intencao, slots_efetivos, dados, sessao, msg), sessao)
         atualizar_sessao_pos_turno(sessao, msg, slots_efetivos, intencao, resposta)

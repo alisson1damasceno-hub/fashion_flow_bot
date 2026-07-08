@@ -5,6 +5,7 @@ import sys
 from bot.loader import carregar_dados
 from bot.extractor import extrair_slots
 from bot.classifier import classificar
+from bot.politica import limpar_menu_se_mudou_assunto
 from bot.responder import responder
 from bot.seguranca import verificar_seguranca
 from bot.cliente import tratar_nome, personalizar
@@ -89,9 +90,10 @@ def main():
             continue
 
         # Pipeline principal
+        limpar_menu_se_mudou_assunto(mensagem, sessao)
         em_menu = bool(sessao.get("aguardando_opcao"))
         slots_turno = extrair_slots(mensagem, em_menu=em_menu)
-        slots_efetivos = merge_com_contexto(slots_turno, sessao)
+        slots_efetivos = merge_com_contexto(slots_turno, sessao, mensagem)
         intencao = classificar(mensagem, slots_turno, slots_efetivos, dados["intencoes"], sessao)
         resposta = responder(intencao, slots_efetivos, dados, sessao, mensagem)
         resposta = personalizar(resposta, sessao)   # chama o cliente pelo nome

@@ -16,7 +16,7 @@ import shutil
 import sys
 import tempfile
 
-BOT = "/Users/marciabeatriz/Documents/Faculdade/fashion_flow_bot"
+BOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, BOT)
 
 from bot.loader import carregar_dados
@@ -61,7 +61,7 @@ def run_turn(sessao, msg):
 
     em_menu = bool(sessao.get("aguardando_opcao"))
     st = extrair_slots(msg, em_menu=em_menu)
-    se = merge_com_contexto(st, sessao)
+    se = merge_com_contexto(st, sessao, msg)
     intencao = classificar(msg, st, se, DADOS["intencoes"], sessao)
     resposta = responder(intencao, se, DADOS, sessao, msg)
     resposta = personalizar(resposta, sessao)
