@@ -4,9 +4,96 @@ Geração da resposta a partir da intenção classificada + slots efetivos + dad
 import re
 
 from bot.normalizar import normalizar
+from bot.intencoes_runtime import EXIGE_HANDLER, MENUS
 # CRUD de pedidos — cada operação mora no seu próprio arquivo em bot/pedidos/.
 from bot.pedidos import criar, consultar, atualizar, cancelar
 
+
+
+def _quer_menu(mensagem):
+    """Verdadeiro quando o usuário pediu explicitamente opções/lista/menu."""
+    t = normalizar(mensagem or "")
+    return bool(re.search(
+        r'\b(menu|opcoes|opções|opcao|opção|lista|listar|mostra|mostrar|quais|qual sao|quais sao|tipos|categorias|não sei|nao sei)\b',
+        t
+    ))
+
+
+def _resposta_menu_direta(intencao, slots, dados):
+    """Resumo direto para intenções que antes abriam menu por padrão."""
+    produto = (slots or {}).get("produto")
+    tecido = (slots or {}).get("tecido")
+    textos = {
+        "qualidade": (
+            "As peças passam por controle de tecido, modelagem, corte, costura e acabamento. "
+            "Também avaliamos durabilidade, defeitos de fabricação e certificações quando aplicável."
+        ),
+        "personalizacao": (
+            "Trabalhamos com bordado, silkscreen, DTF, etiqueta personalizada e modelagem exclusiva. "
+            "A melhor técnica depende da arte, tecido, quantidade e prazo."
+        ),
+        "personalizacao_tipos": (
+            "As principais técnicas são bordado para acabamento premium, silkscreen para volume, "
+            "DTF para artes coloridas/gradientes e etiqueta personalizada para marca própria."
+        ),
+        "personalizacao_cores": (
+            "Temos cores básicas em estoque e cores sob demanda por tingimento. Para estampa, a combinação "
+            "entre cor da peça e cor da arte precisa de amostra física quando há contraste alto."
+        ),
+        "personalizacao_tamanhos": (
+            "Trabalhamos com grade adulto, infantil e plus size conforme o produto. Se você disser a peça, "
+            "eu confirmo a grade disponível."
+        ),
+        "personalizacao_quantidade": (
+            "A quantidade mínima muda por técnica: DTF aceita tiragens menores, bordado e silk ficam melhores "
+            "a partir de volumes maiores. Para pedido grande, há desconto e planejamento em lotes."
+        ),
+        "sustentabilidade": (
+            "A Fashion Flow trabalha com aproveitamento de tecido, reciclagem de sobras, opções de materiais "
+            "reciclados e controle de químicos/tintas certificados quando a linha exige."
+        ),
+        "manutencao": (
+            "Cuidados gerais: lavar do avesso, água fria, ciclo delicado, secar à sombra e evitar secadora. "
+            "Peças com estampa ou bordado devem ser passadas do avesso."
+        ),
+        "manut_por_tecido": (
+            "Os cuidados mudam por tecido: algodão pode encolher um pouco, viscose exige delicadeza, "
+            "jeans pode desbotar e moletom não combina com calor alto/secadora."
+        ),
+        "producao": (
+            "A produção passa por ficha técnica, modelagem, corte, costura, acabamento, revisão de qualidade "
+            "e embalagem. Produzimos internamente no Brasil."
+        ),
+        "catalogo": (
+            "Produzimos camisetas, polos, moletons, jaquetas, calças, vestidos, uniformes e linha infantil. "
+            "Se você disser a categoria, eu detalho os modelos."
+        ),
+        "sugestao_produto": (
+            "Posso sugerir por uso: dry fit para esporte, moletom/jaqueta para frio, polo ou camisa social "
+            "para trabalho, vestido/alfaiataria para ocasiões especiais."
+        ),
+        "tecidos": (
+            "Trabalhamos com algodão básico/penteado/pima, dry fit, viscose, linho, suplex, jeans, moletom, "
+            "malha mista, tencel e alfaiataria. A escolha depende do produto e do uso."
+        ),
+        "sug_tecido_uso": (
+            "Para calor, prefira algodão leve, viscose ou dry fit. Para frio, moletom flanelado e jeans pesado. "
+            "Para esporte, dry fit ou suplex; para formal, linho ou alfaiataria."
+        ),
+        "previsao_prazo": (
+            "O prazo padrão de produção fica entre 15 e 30 dias úteis, variando por quantidade, produto e personalização. "
+            "Se você disser produto e quantidade, eu estimo melhor."
+        ),
+        "etapas_pedido": (
+            "Um pedido passa por modelagem, corte, costura, acabamento, qualidade e expedição. Para consultar um pedido real, "
+            "me informe o número no formato FF-AAAA-NNNN."
+        ),
+    }
+    if intencao == "tecidos" and produto:
+        return f"Para {produto.replace('_', ' ')}, eu posso confirmar tecidos recomendados e compatibilidade. Quer saber tecido ideal, composição ou cores?"
+    if intencao == "personalizacao_cores" and tecido:
+        return f"Para {tecido.replace('_', ' ')}, eu consigo consultar as cores cadastradas. Quer as cores em estoque ou combinação com estampa?"
+    return textos.get(intencao)
 
 def pecas(qtd):
     """Singular/plural correto (MÉDIO 26)."""
@@ -39,6 +126,28 @@ ROTULO_CAMPO = {
     "tamanho": "um tamanho", "tecido": "um tecido", "personalizacao": "uma personalização",
 }
 
+
+
+def _slots_registro_do_turno(mensagem):
+    """Slots ditos AGORA, mapeados para os nomes do formulário de pedido."""
+    from bot.extractor import extrair_slots
+    st = extrair_slots(mensagem, em_menu=False)
+    reg = {}
+    for campo in ("produto", "quantidade", "cor", "tecido", "personalizacao"):
+        if st.get(campo) not in (None, ""):
+            reg[campo] = st[campo]
+    if st.get("grade") not in (None, ""):
+        reg["tamanho"] = st["grade"]
+    return reg
+
+
+def _preencher_campos_fora_de_ordem(reg, mensagem):
+    """Aproveita campos válidos mesmo quando o cliente respondeu fora da ordem."""
+    novos = _slots_registro_do_turno(mensagem)
+    for campo, valor in novos.items():
+        if campo in CAMPOS_REGISTRO and not reg.get(campo):
+            reg[campo] = valor
+    return novos
 
 def _valor_campo(mensagem, campo):
     """
@@ -124,24 +233,23 @@ def _fluxo_registrar(slots, sessao, mensagem, dados=None):
     # 1-2. Preenche os campos.
     pendente = sessao.get("registro_campo_pendente")
     invalido = False
+    novos = {}
     if primeiro:
-        # No PRIMEIRO turno, aproveita tudo que o extractor reconheceu
-        # (pré-preenche produto/quantidade/cor/tecido de "quero 100 camisas de linho").
-        for campo in CAMPOS_REGISTRO:
-            if slots.get(campo) not in (None, ""):
-                reg[campo] = slots[campo]
+        # No primeiro turno usamos só os slots ditos AGORA. Isso evita herdar um
+        # orçamento antigo quando o cliente diz apenas "quero fazer pedido".
+        for campo, valor in _slots_registro_do_turno(mensagem).items():
+            reg[campo] = valor
     elif pendente and not reg.get(pendente):
-        # Nos turnos seguintes a gente pergunta UM campo por vez → só preenche ESSE
-        # campo. (Assim uma pergunta solta no meio — "me fala da premium" — não troca
-        # o produto do pedido sem querer.) Valida: se não for um valor plausível,
-        # marca inválido pra responder a dúvida e re-perguntar (não grava lixo).
-        valor = slots.get(pendente) if slots.get(pendente) not in (None, "") \
-            else _valor_campo(mensagem, pendente)
+        # Aproveita campos fora de ordem (ex: cliente diz "algodão pima" quando
+        # a pergunta era tamanho; guardamos o tecido e continuamos pedindo tamanho).
+        novos = _preencher_campos_fora_de_ordem(reg, mensagem)
+        valor = novos.get(pendente)
+        if valor in (None, ""):
+            valor = _valor_campo(mensagem, pendente)
         if valor:
             reg[pendente] = valor
-        else:
+        elif not novos:
             invalido = True
-
     sessao["registro_pedido"] = reg
 
     # 3. Ainda falta algum campo? Pergunta o próximo.
@@ -177,6 +285,13 @@ def _fluxo_registrar(slots, sessao, mensagem, dados=None):
             resumo = ", ".join(partes)
             intro = (f"Boa, anotei: {resumo}. Vou registrar seu pedido — só faltam "
                      "alguns dados. " if resumo else "Vamos registrar seu pedido! ")
+        elif novos and proximo == pendente:
+            anotados = []
+            for campo, valor in novos.items():
+                if campo != proximo and reg.get(campo) == valor:
+                    anotados.append(f"{ROTULO_CAMPO.get(campo, campo)} {str(valor).replace('_', ' ')}")
+            if anotados:
+                intro = "Anotei " + ", ".join(anotados) + ". "
         return intro + PERGUNTAS_REGISTRO[proximo]
 
     # 4. Completou a coleta DESTE item → guarda no CARRINHO (ainda NÃO grava;
@@ -260,6 +375,176 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
     Retorna a resposta em texto para o usuário.
     `slots` aqui são os slots EFETIVOS (foco_atual + slots_turno mesclados).
     """
+
+    if sessao and sessao.get("aguardando_id") and intencao in ("status_pedido", "alterar_pedido_especifico", "cancelar_pedido") and not slots.get("numero_pedido"):
+        t_msg = normalizar(mensagem)
+        if re.search(r'nao tenho|não tenho|nao sei|não sei|sem numero|sem número|esqueci', t_msg):
+            return (
+                "Sem o número do pedido eu não consigo consultar com segurança. "
+                "Procura no comprovante ou na mensagem de confirmação; o formato é FF-AAAA-NNNN. "
+                "Se preferir, posso seguir com outra dúvida enquanto isso."
+            )
+        nudges = sessao.setdefault("pedido_id_nudges", {})
+        nudges[intencao] = nudges.get(intencao, 0) + 1
+        if intencao == "status_pedido":
+            if nudges[intencao] == 1:
+                return (
+                    "Consigo consultar, mas preciso do número do pedido para não olhar o pedido errado. "
+                    "Ele fica no formato FF-AAAA-NNNN."
+                )
+            return (
+                "Ainda falta o número FF-AAAA-NNNN. Sem ele eu não consigo ver andamento, etapa ou previsão desse pedido."
+            )
+        if intencao == "alterar_pedido_especifico":
+            if nudges[intencao] == 1:
+                return (
+                    "Para ver se dá para alterar, preciso do número FF-AAAA-NNNN. "
+                    "A alteração depende da etapa: em modelagem costuma dar, depois do corte geralmente não."
+                )
+            return (
+                "Ainda preciso do número FF-AAAA-NNNN para conferir se esse pedido pode ser alterado."
+            )
+        if intencao == "cancelar_pedido":
+            return "Para cancelar com segurança, me informe o número FF-AAAA-NNNN do pedido."
+
+    # ── MULTI-INTENÇÃO: cliente perguntou 3+ tópicos numa frase só ──
+    # O classifier detectou e guardou a lista em sessao["topicos_pendentes"].
+    # Em vez de responder um dos tópicos e ignorar o resto (comportamento antigo),
+    # a gente lista o que entendeu e pergunta por qual começar.
+    if intencao == "multi_intencao":
+        from bot.classifier import _TOPICOS_LABELS
+        topicos = (sessao or {}).get("topicos_pendentes", [])
+        if topicos:
+            nomes = [_TOPICOS_LABELS.get(x, x) for x in topicos]
+            if len(nomes) == 2:
+                lista = f"{nomes[0]} e {nomes[1]}"
+            else:
+                lista = ", ".join(nomes[:-1]) + f" e {nomes[-1]}"
+            return (f"Vi que você quer saber sobre vários assuntos: {lista}. "
+                    f"Por qual você quer começar?")
+
+    if intencao == "manut_amaciante":
+        return (
+            "Melhor evitar amaciante, principalmente em moletom, dry fit e peças com estampa. "
+            "Ele pode endurecer fibras, reduzir respirabilidade e prejudicar a durabilidade da personalização. "
+            "Prefira sabão neutro e água fria."
+        )
+
+    if intencao == "sobre_marca_tempo":
+        return (
+            "A Fashion Flow atua como confecção de produção própria, com foco em peças sob demanda, "
+            "uniformes, personalização e private label. Para histórico comercial completo, o setor de vendas confirma os detalhes."
+        )
+
+    if intencao == "sustent_algodao_organico":
+        return (
+            "Alguns lotes podem usar algodão certificado/sustentável sob demanda, mas a linha padrão não é toda orgânica. "
+            "Quando o pedido exige certificação, confirmamos disponibilidade do tecido antes de fechar produção."
+        )
+
+    if intencao == "sustent_fibra_reciclada":
+        return (
+            "Sim, trabalhamos com opções de poliéster reciclado (rPET) e reaproveitamento de sobras têxteis em linhas específicas. "
+            "A disponibilidade depende do produto e da cor escolhida."
+        )
+
+    if intencao == "comparar_premium_basica":
+        return (
+            "A camiseta premium usa algodão pima penteado: toque mais macio, fio mais fino "
+            "e melhor durabilidade. A básica é mais econômica e funciona bem para volume, "
+            "uniforme simples e ações promocionais. Se a peça for para marca própria, revenda "
+            "ou uso frequente, eu indicaria a premium; se o foco for custo, a básica resolve melhor."
+        )
+
+    if intencao == "qualidade_defeito":
+        if sessao is not None:
+            sessao["problema_cliente"] = {"intencao": intencao, "msg": mensagem, "slots": dict(slots or {})}
+        t_msg = normalizar(mensagem or "")
+        if re.search(r'resolver|arrumar|corrigir|e agora|o que faco|o que faço', t_msg):
+            return (
+                "Certo, vamos resolver pelo pedido. Me envie o número FF-AAAA-NNNN e uma foto do defeito; "
+                "com isso a qualidade consegue avaliar se entra como troca, retrabalho ou devolução."
+            )
+        if re.search(r'costura', t_msg):
+            return (
+                "Costura torta entra como possível defeito de acabamento. Para abrir a análise, preciso do número do pedido "
+                "e uma foto mostrando a costura; assim a equipe confere lote, etapa e melhor solução."
+            )
+        return (
+            "Entendi: isso parece defeito de fabricação ou problema de acabamento. "
+            "Para resolver, preciso do número do pedido e, se possível, uma foto da peça mostrando o defeito. "
+            "Com isso dá para acionar qualidade/devoluções e orientar troca, retrabalho ou análise técnica."
+        )
+
+    if intencao == "prazo_atraso":
+        if sessao is not None:
+            sessao["problema_cliente"] = {"intencao": intencao, "msg": mensagem, "slots": dict(slots or {})}
+            sessao["aguardando_id"] = "status_pedido"
+        return (
+            "Vamos tratar o atraso pelo pedido certo. Me informe o número do pedido no formato FF-AAAA-NNNN; "
+            "com ele eu consulto o andamento e vejo se está em produção, qualidade ou expedição."
+        )
+
+    if intencao == "prazo_urgente":
+        return (
+            "Dá para avaliar aceleração de prazo, mas depende da etapa do pedido e da fila de produção. "
+            "Se você já tem um pedido, me envie o número FF-AAAA-NNNN. Se ainda é orçamento, me diga produto, quantidade e data limite."
+        )
+
+    if intencao == "setor_vendas":
+        perfil = (sessao or {}).get("perfil_recomendacao", {})
+        if perfil.get("prioridade") == "preco":
+            return (
+                "Pensando em menor preço, normalmente camiseta básica ou polo simples sem muitas cores de personalização "
+                "fica mais em conta. Para comparar valor final, vendas precisa de produto, quantidade, logo/personalização e prazo."
+            )
+        return (
+            "Para preço, valor final, pagamento, desconto ou fechamento, vendas confirma a proposta. "
+            "Se você me disser produto, quantidade e personalização, eu consigo dar uma estimativa antes."
+        )
+
+    if intencao == "setor_logistica":
+        return (
+            "Isso fica com logística: frete, envio, rastreio e prazo de entrega dependem do endereço e da transportadora. "
+            "Se você já tem pedido, me informe o número FF-AAAA-NNNN; se ainda não fechou, vendas calcula o frete no orçamento."
+        )
+
+    if intencao == "setor_devolucao":
+        return (
+            "Para troca, devolução, tamanho errado ou problema na peça recebida, o próximo passo é abrir análise do pedido. "
+            "Me envie o número FF-AAAA-NNNN e explique o que veio errado; com isso a equipe verifica troca, ajuste ou devolução."
+        )
+
+    if intencao == "setor_compras":
+        return (
+            "Se você quer vender ou fornecer tecido para a Fashion Flow, isso é assunto de compras. "
+            "O ideal é enviar tipo de material, composição, ficha técnica, capacidade de fornecimento e contato comercial."
+        )
+
+    if intencao == "setor_almoxarifado":
+        return (
+            "Disponibilidade de matéria-prima é controlada pelo almoxarifado. "
+            "Me diga qual tecido ou material você quer consultar que eu tento verificar pela base cadastrada."
+        )
+
+    if intencao == "sug_trabalho":
+        return (
+            "Para empresa, eu indicaria polo corporativa quando precisa de imagem profissional e custo controlado; "
+            "camiseta premium para evento mais informal; e dry fit se o local for quente ou a equipe ficar em movimento. "
+            "Se tiver logo, bordado passa mais confiança; silk/DTF costuma sair melhor em volume ou arte colorida."
+        )
+
+    if intencao == "sug_tec_quente":
+        return (
+            "Para local quente, priorize tecido leve e respirável: algodão leve, viscose, linho ou dry fit. "
+            "Para uniforme de empresa com logo, eu compararia polo dry fit com bordado pequeno ou camiseta premium clara com silk/DTF."
+        )
+
+    if intencao == "personalizacao_bordado" and re.search(r'\blogo\b', normalizar(mensagem or "")):
+        return (
+            "Para logo de empresa, o bordado é a opção mais profissional e durável, especialmente em polo e uniforme. "
+            "Se o logo tiver muitas cores ou degradê, DTF pode preservar melhor a arte; se for grande volume, silk pode reduzir custo."
+        )
 
     # ── CREATE: registrar pedido (coleta os campos ao longo da conversa) ──
     if intencao == "registrar_pedido":
@@ -479,7 +764,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         if sessao:
             sessao["aguardando_opcao"] = None
         slots_novos = extrair_slots(mensagem, em_menu=False)
-        slots_ef = merge_com_contexto(slots_novos, sessao) if sessao else slots_novos
+        slots_ef = merge_com_contexto(slots_novos, sessao, mensagem) if sessao else slots_novos
         nova_intencao = classificar(mensagem, slots_novos, slots_ef, dados["intencoes"], sessao)
         if nova_intencao not in ("selecao_opcao", "fallback"):
             return responder(nova_intencao, slots_ef, dados, sessao, mensagem)
@@ -497,6 +782,9 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             f"Vi que você mencionou {prazo} dias — pra eu dizer se conseguimos, preciso saber: "
             "qual produto, qual quantidade e se tem personalização (silk, bordado, DTF)?"
         )
+
+    if intencao == "alterar_pedido":
+        return responder("alterar_pedido_especifico", slots, dados, sessao, mensagem)
 
     # ── DELETE: cancelar pedido (soft delete) ────────────────────
     if intencao == "cancelar_pedido":
@@ -704,7 +992,7 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         )
 
     # ── Prazo ────────────────────────────────────────────────────
-    if intencao == "combinado_prazo_qtd_produto":
+    if intencao in ("combinado_prazo_qtd_produto", "combinado_prazo_personalizacao_produto"):
         quantidade = slots.get("quantidade", 0)
         produto = slots.get("produto")
         personalizacao = slots.get("personalizacao", "nenhuma")
@@ -716,6 +1004,12 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 "Pra calcular prazo eu preciso saber qual produto você quer. "
                 "Trabalhamos com camisetas, polos, moletons, vestidos, calças, uniformes e mais. "
                 "Qual deles?"
+            )
+        if not quantidade:
+            pers_txt = f" com {personalizacao}" if personalizacao != "nenhuma" else ""
+            return (
+                f"Consigo estimar o prazo de {produto.replace('_',' ')}{pers_txt}, "
+                "mas preciso da quantidade de peças. Quantas unidades você quer produzir?"
             )
 
         df = dados["prazo"]
@@ -763,11 +1057,37 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             "Prazo confirmado pelo setor de vendas no fechamento do pedido."
         )
 
+    if intencao == "combinado_preco_personalizacao":
+        produto = slots.get("produto")
+        quantidade = slots.get("quantidade")
+        personalizacao = slots.get("personalizacao")
+        tecnica = f" de {personalizacao}" if personalizacao and personalizacao != "nenhuma" else ""
+        if produto and quantidade:
+            # Reaproveita a tabela de preço quando já há produto e quantidade.
+            slots = dict(slots)
+            slots["personalizacao"] = personalizacao or "nenhuma"
+            return responder("combinado_preco_qtd_produto", slots, dados, sessao, mensagem)
+        base = (
+            f"A personalização{tecnica} costuma acrescentar de 10% a 40% sobre o valor base, "
+            "dependendo da técnica, tamanho da arte, número de cores e volume. "
+        )
+        if not produto or not quantidade:
+            return base + "Pra estimar melhor, me diga produto e quantidade de peças."
+        return base + "O fechamento do valor final é com vendas."
+
     # ── Preço ────────────────────────────────────────────────────
     if intencao == "combinado_preco_qtd_produto":
         quantidade = slots.get("quantidade", 0)
         produto = slots.get("produto")
         personalizacao = slots.get("personalizacao", "nenhuma")
+        if sessao and sessao.get("tipo_turno") == "correcao_orcamento" and not re.search(
+            r'preco|preço|valor|custa|quanto fica|orcamento|orçamento|sai por', normalizar(mensagem or "")
+        ):
+            return (
+                f"Corrigi o orçamento para {quantidade} {pecas(quantidade)} de "
+                f"{produto.replace('_',' ') if produto else 'produto ainda não definido'}. "
+                "Se quiser, eu calculo o valor estimado."
+            )
         if not produto:
             return (
                 "Pra calcular preço eu preciso saber qual produto você quer. "
@@ -858,6 +1178,21 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         tecidos = ", ".join(t.replace("_", " ") for t in compat["tecido"].tolist())
         return f"Para {produto.replace('_',' ')}, os tecidos recomendados são: {tecidos}."
 
+    # ── Cores disponíveis para tecido ────────────────────────────
+    if intencao == "combinado_cores_disponiveis_para_tecido":
+        tecido = slots.get("tecido")
+        if not tecido:
+            return "Pra qual tecido? Exemplos: algodão, moletom, viscose, jeans ou linho."
+        df = dados["cor_tecido"]
+        filtro = df[df["tecido"] == tecido]
+        if filtro.empty:
+            return f"Não tenho cores cadastradas para {tecido.replace('_',' ')}. Consulte vendas para cor sob demanda."
+        estoque = filtro[filtro["disponibilidade"].astype(str).str.strip().str.lower() == "estoque"]
+        base = estoque if not estoque.empty else filtro
+        cores = ", ".join(c.replace("_", " ") for c in base["cor"].tolist())
+        sufixo = "em estoque permanente" if not estoque.empty else "cadastradas/sob demanda"
+        return f"Para {tecido.replace('_',' ')}, as cores {sufixo} são: {cores}."
+
     # ── Cor em tecido ────────────────────────────────────────────
     if intencao == "combinado_cor_em_tecido":
         cor = slots.get("cor")
@@ -934,23 +1269,38 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
         r = linha.iloc[0]
         return f"{r['nome']}: {r['descricao']}. (Categoria: {r['categoria']}.)"
 
-    # ── Resposta padrão do CSV (menus etc) ───────────────────────
+    # ── Resposta padrão do CSV ──────────────────────────────────
+    # O CSV é base de conhecimento/keywords. Fluxos internos, CRUD e respostas
+    # calculadas precisam ter handler acima; se chegarem aqui, é bug controlado.
+    if intencao in EXIGE_HANDLER:
+        return (
+            "Consigo ajudar com isso, mas faltou uma regra interna para concluir a resposta. "
+            "Pode reformular ou informar produto, quantidade e detalhes do pedido?"
+        )
+
     df_int = dados["intencoes"]
     row = df_int[df_int["id_intencao"] == intencao]
     if not row.empty:
         resposta = row.iloc[0]["resposta_padrao"]
         followup = row.iloc[0]["pergunta_followup"]
-        if followup and str(followup) != "nan":
-            if "|" in str(followup):
+        followup_txt = str(followup) if followup and str(followup) != "nan" else ""
+
+        if intencao in MENUS and "|" in followup_txt and not _quer_menu(mensagem):
+            direta = _resposta_menu_direta(intencao, slots, dados)
+            if direta:
+                return direta + " Se quiser, posso listar as opções."
+
+        if followup_txt:
+            if "|" in followup_txt:
                 if sessao:
                     sessao["aguardando_opcao"] = f"menu_{intencao}"
-                opcoes = str(followup).split("|")
+                opcoes = followup_txt.split("|")
                 # tira o rótulo "Escolha uma opção:" que veio colado na 1ª opção
                 opcoes[0] = re.sub(r'(?i)^\s*escolha uma op[çc][aã]o:\s*', '',
                                    opcoes[0]).strip()
                 lista = "\n".join(f"  {i+1}. {o.strip()}" for i, o in enumerate(opcoes))
                 return f"{resposta}\n{lista}"
-            return f"{resposta}\n{followup}"
+            return f"{resposta}\n{followup_txt}"
         return resposta
 
     # ── Fallback ─────────────────────────────────────────────────

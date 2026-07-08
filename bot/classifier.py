@@ -13,6 +13,7 @@ import re
 from rapidfuzz import fuzz
 
 from bot.normalizar import normalizar
+from bot.politica import numero_solto_de_correcao
 
 
 # Itens que a Fashion Flow claramente NÃO faz (fora de vestuário). Serve pra o bot
@@ -31,6 +32,51 @@ def item_fora_catalogo(texto):
     """Devolve o item fora do catálogo citado na mensagem (ex: 'moto'), ou None."""
     m = re.search(FORA_CATALOGO, normalizar(texto))
     return m.group(0) if m else None
+
+
+# Intenções que só fazem sentido COM slots (produto/tecido/cor/quantidade/uso).
+# São alcançadas pelas regras de slot (etapa 6/7); NÃO podem ser pescadas por
+# similaridade fuzzy (etapa 9) — senão um typo casa por acaso e o responder monta
+# resposta com "None" (ex: "grade None para None").
+_SO_POR_SLOT = {
+    "combinado_tecido_em_produto", "combinado_cor_em_tecido",
+    "combinado_tamanho_em_produto", "combinado_gramatura_produto_uso",
+    "combinado_personalizacao_em_tecido", "combinado_tecidos_disponiveis_para_produto",
+    "combinado_cores_disponiveis_para_tecido", "combinado_prazo_qtd_produto",
+    "combinado_preco_qtd_produto", "combinado_prazo_personalizacao_produto",
+    "combinado_preco_personalizacao", "consumo_tecido", "viabilidade_producao",
+    "produto_detalhe",
+}
+
+
+# Tópicos macro pra detecção de MULTI-INTENÇÃO. Quando a mensagem toca 3+
+# tópicos distintos e nenhuma intenção composta (combinado_*) fechou, o bot
+# lista o que entendeu e pergunta por qual começar — em vez de escolher uma
+# arbitrariamente e ignorar o resto. As regex são propositalmente conservadoras
+# (só palavras de contexto claro) pra não disparar em mono-intenção.
+_TOPICOS_MULTI = {
+    "prazo":         r'\bprazo\b|\bdias?\b|quando fica|quanto tempo|\bdemora\b',
+    "preco":         r'\bpreco\b|\bpreço\b|\bvalor\b|\bcusta\b|orcamento|sai por',
+    "produto":       r'\bcamise\w*|\bmoleto\w*|\bpolos?\b|\bcalcas?\b|\bcalças?\b|'
+                     r'\bvestidos?\b|\bjaquetas?\b|\bbermudas?\b|\bregatas?\b|'
+                     r'\bleggings?\b|\buniforme\w*|\bjalecos?\b|\bjeans\b',
+    "cor":           r'\bcor(es)?\b',
+    "tecido":        r'\btecidos?\b|\balgodao\b|\blinho\b|\bviscose\b|\bsuplex\b',
+    "cuidados":      r'\bcuido\b|\bcuidar\b|\blavar?\b|\blavo\b|encolh\w*|desbot\w*|amass\w*',
+    "tamanho":       r'\btamanhos?\b|\bgrade\b|numeracao|plus.?size',
+    "personalizacao": r'estamp\w*|bordad\w*|\bsilk\w*|\bdtf\b|serigrafia',
+    "entrega":       r'entreg\w*|\benvi\w*|\bfrete\b|correios',
+}
+_TOPICOS_LABELS = {
+    "prazo": "prazo", "preco": "preço", "produto": "catálogo de produtos",
+    "cor": "cores", "tecido": "tecidos", "cuidados": "cuidados com a peça",
+    "tamanho": "tamanhos", "personalizacao": "personalização", "entrega": "entrega",
+}
+
+
+def _detectar_topicos_multi(texto):
+    """Retorna o conjunto de tópicos macro que a mensagem toca."""
+    return {nome for nome, rx in _TOPICOS_MULTI.items() if re.search(rx, texto)}
 
 
 def pontuar_candidatas(mensagem, intencoes, top=3):
@@ -86,6 +132,46 @@ def _peso(row):
         return 5.0
 
 
+
+def _parece_pergunta(texto):
+    return bool(re.search(
+        r'\?|\b(qual|quais|quanto|quantos|quando|como|onde|por que|porque|pode|posso|tem|aceita|trabalha|fazem|da pra|dá pra)\b',
+        texto
+    ))
+
+
+def _parece_status_pedido_existente(texto):
+    return bool(re.search(
+        r'\b(fiz|tenho|ja fiz|já fiz|abri|fechei)\b.{0,30}\bpedido\b|'
+        r'\bpedido\b.{0,30}\b(semana passada|ontem|mes passado|mês passado|anterior|antigo|existente)\b|'
+        r'\b(como|onde)\s+(ta|esta)\b.{0,20}\bpedido\b|'
+        r'\bquero saber\b.{0,25}\bpedido\b',
+        texto
+    ))
+
+
+def _escolha_curta_topico(texto):
+    mapa = {
+        'preco': 'setor_vendas', 'preço': 'setor_vendas', 'valor': 'setor_vendas',
+        'prazo': 'previsao_prazo', 'tempo': 'previsao_prazo',
+        'cor': 'personalizacao_cores', 'cores': 'personalizacao_cores',
+        'tecido': 'tecidos', 'tecidos': 'tecidos',
+        'tamanho': 'personalizacao_tamanhos', 'tamanhos': 'personalizacao_tamanhos',
+        'grade': 'personalizacao_tamanhos',
+        'personalizacao': 'personalizacao', 'personalização': 'personalizacao',
+        'qualidade': 'qualidade', 'lavagem': 'manutencao', 'lavar': 'manutencao',
+        'cuidado': 'manutencao', 'cuidados': 'manutencao',
+        'tipos': 'personalizacao_tipos', 'tipo': 'personalizacao_tipos',
+        'catalogo': 'catalogo', 'catálogo': 'catalogo', 'uniforme': 'cat_uniformes',
+    }
+    chave = re.sub(r'[^a-z0-9 çãáéíóúâêô]+', '', texto).strip()
+    return mapa.get(chave)
+
+
+def _numero_solto(texto):
+    m = re.fullmatch(r'\s*(?:e\s+)?(?:(?:se\s+)?(?:for|forem|fosse|fossem)\s+)?(?:pra|para)?\s*(\d+)\s*\??\s*', texto)
+    return int(m.group(1)) if m else None
+
 def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     """
     Retorna o id da intenção classificada.
@@ -103,11 +189,211 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if sessao and sessao.get("aguardando_opcao"):
         return "selecao_opcao"
 
+    # ── 0c. Palavras de NAVEGAÇÃO soltas (menu/ajuda/voltar/opcoes) ──
+    # Sozinhas, viravam intenções aleatórias no fuzzy ("menu" casava com
+    # "meu pedido", "voltar" com "dinheiro de volta"). Aqui a gente força
+    # elas caírem na saudação, que já lista os tópicos que o bot cobre.
+    if re.fullmatch(r'\s*(menu|ajuda|help|opcao|opcoes|voltar|inicio|comecar)\s*[.!?]*', t):
+        return "saudacao"
+
+    topico_curto = _escolha_curta_topico(t)
+    if topico_curto:
+        return topico_curto
+
+    tipo_turno = (sessao or {}).get("tipo_turno") if sessao else None
+
+    if re.search(r'porcaria de bot|nao presta|não presta|pessim[oa]|horrivel|horrível|inutil|inútil|ruim demais', t):
+        return "ofensas"
+    if re.fullmatch(r'(que legal|legal demais|muito bom|perfeito|excelente|otimo|ótimo|show|top)', t):
+        return "elogios1"
+
+    if re.search(r'\b(arte|arquivo|layout|vetor|png|cdr|pdf|svg)\b', t) and re.search(r'envi|mand|formato|aceit|resoluc', t):
+        return "personalizacao_envio_arte"
+    if re.search(r'preco da personaliz|preço da personaliz|quanto custa personaliz|valor da personaliz', t):
+        return "combinado_preco_personalizacao"
+    if slots_turno.get("tecido") and slots_turno.get("personalizacao") and re.search(r'estampar|bordar|personaliz|posso|pode|da pra|dá pra', t):
+        return "combinado_personalizacao_em_tecido"
+    if slots_turno.get("produto") and slots_turno.get("grade"):
+        return "combinado_tamanho_em_produto"
+    if slots_turno.get("tecido") and slots_turno.get("cor") and re.search(r'\btem\b|disponiv|estoque|cor|pronta entrega', t):
+        return "combinado_cor_em_tecido"
+    if re.search(r'cor personalizada|cor especifica|cor específica|cor especial|pantone|tingimento|tingir', t):
+        return "cores_sob_demanda"
+    if re.search(r'cores?.{0,20}pronta entrega|cores?.{0,20}estoque|quais cores|que cores', t):
+        if slots_turno.get("tecido"):
+            return "combinado_cores_disponiveis_para_tecido"
+        return "cores_basicas"
+    if re.search(r'pronta entrega|pecas? pronta|peças? pronta|envio imediato', t):
+        return "pronta_entrega"
+    if re.search(r'prazo .*personaliz|prazo com personaliz|tempo .*personaliz|demora .*personaliz', t):
+        return "prazo_com_personalizacao"
+    if re.search(r'prazo .*produc|tempo de produc|prazo medio de produc|prazo médio de produc', t):
+        return "prazo_padrao"
+
+    if re.search(r'customiza|customizac|personaliza|personalizac|estampar|estampa personalizada', t):
+        if re.search(r'minim|mínim|quantas pecas|quantas peças', t):
+            return "personalizacao_quantidade"
+        return "personalizacao"
+    if re.search(r'minim|mínim|pedido minimo|pedido mínimo', t) and re.search(r'silk|bordad|dtf|personaliz', t):
+        return "personalizacao_quantidade"
+
+    if re.search(r'\b(frete|envio|entrega|rastreio|rastreamento|codigo de rastreio|código de rastreio)\b', t):
+        return "setor_logistica"
+    if re.search(r'material dispon|materia prima|matéria-prima|tem material|disponibilidade', t):
+        return "disponibilidade_materiais"
+    if re.search(r'como vendo pra voces|quero fornecer|fornecer tecido|sou fornecedor|setor de compras|vender tecido pra voces', t):
+        return "setor_compras"
+
+    if re.search(r'aproveita.*tecido|desperdicio|desperdício|sobras? de corte', t):
+        return "sustent_aproveitamento"
+    if re.search(r'trabalho digno|condicoes de trabalho|condições de trabalho|trabalho escravo|trabalho infantil|clt|facção|faccao', t):
+        return "sustent_trabalho"
+    if re.search(r'caixa recicl|embalagem recicl|embalagem sustent|logistica sustent', t):
+        return "sustent_logistica"
+
+    if re.search(r'o que da pra fazer|o que voces fazem|quais pecas voces produzem|que tipo de produto fazem', t):
+        return "catalogo"
+    if re.search(r'\b(tem|fazem|voces fazem|produzem|vendem|trabalham com|da pra fazer)\b', t) and slots_turno.get("produto") \
+       and not re.search(r'\bpreco|preço|valor|prazo|tempo|quantas|tamanho|grade|cor(es)?|tecido\b', t):
+        produto_catalogo = {
+            "camiseta_basica": "cat_camisetas", "camiseta_premium": "produto_detalhe",
+            "polo": "cat_camisetas", "baby_look": "cat_camisetas", "regata": "cat_camisetas",
+            "oversized": "cat_camisetas", "moletom": "cat_moletons", "jaqueta": "cat_moletons",
+            "calca_jeans": "cat_calcas", "calca_alfaiataria": "cat_calcas", "legging": "cat_calcas",
+            "bermuda": "cat_calcas", "jogger": "cat_calcas", "vestido_midi": "cat_vestidos",
+            "vestido_longo": "cat_vestidos", "uniforme_polo": "cat_uniformes", "uniforme_jaleco": "cat_uniformes",
+        }
+        return produto_catalogo.get(slots_turno["produto"], "catalogo")
+
+    if re.search(r'qual peca.*recomenda|qual peça.*recomenda|me recomenda|sugere uma peca|sugere uma peça', t):
+        return "sugestao_produto"
+    if re.search(r'prazo curto|pedido urgente|urgente|pra ontem|adiantar prazo', t):
+        return "prazo_urgente"
+    if re.search(r'prazo.*pedido grande|prazo.*atacado', t):
+        return "prazo_grande_pedido"
+    if re.search(r'\b(consigo|conseguem|viavel|viável|da pra|dá pra)\b', t) and slots_efetivos.get("quantidade"):
+        return "viabilidade_producao"
+    if slots_efetivos.get("produto") and re.search(r'quanto ta|quanto tá|quanto custa|preco|preço|valor', t) \
+       and not slots_efetivos.get("quantidade") and not re.search(r'\d+', t):
+        return "setor_vendas"
+    if re.search(r'quanto mais.*barat|desconto.*volume|desconto progressivo', t):
+        return "combinado_desconto_volume"
+    if re.search(r'tecido grosso|tecido fino|gramatura', t) and slots_efetivos.get("produto"):
+        return "combinado_gramatura_produto_uso"
+    if re.search(r'\b(rastrear|acompanhar|status|modificar|alterar|mudar)\b.*\bpedido\b', t):
+        if re.search(r'modificar|alterar|mudar', t):
+            return "alterar_pedido_especifico"
+        return "status_pedido"
+    if re.search(r'tamanho errado|veio tamanho errado|trocar peca|trocar peça|devolu|reembolso', t):
+        return "setor_devolucao"
+    if re.search(r'\batendem empresa\b|vendem pra empresa|venda pra empresa|atendimento b2b|cnpj|pessoa juridica|pessoa jurídica', t):
+        return "atende_empresa"
+    if re.search(r'uniforme escolar|uniforme de escola|farda escolar', t):
+        return "uniforme_escolar"
+    if re.search(r'produzem pra minha marca|private label|marca propria|marca própria', t):
+        return "private_label"
+
+    # Problemas reais do cliente precisam vencer menu, setor genérico e keyword de
+    # produção. Aqui a intenção é resolver/triagem, não explicar teoria de costura.
+    if re.search(r'defeito|defeituos|veio errad|saiu errad|costura.{0,24}(torta|solta|defeito)|furo|problema na peca|reclam', t):
+        return "qualidade_defeito"
+    if re.search(r'atras|passou do prazo|nao chegou|não chegou|cade meu pedido|cadê meu pedido', t):
+        return "prazo_atraso"
+    if tipo_turno == "problema_cliente" and re.search(r'posso acelerar|adiantar|urgente|prazo curto', t):
+        return "prazo_urgente"
+    if tipo_turno == "problema_cliente" and re.search(r'resolver|arrumar|corrigir|e agora|o que faco|o que faço', t):
+        problema = (sessao or {}).get("problema_cliente", {})
+        return problema.get("intencao") or "qualidade_defeito"
+
+    # Recomendações em conversa longa: preservar o briefing do cliente em vez de
+    # deixar "logo" virar despedida/keyword solta ou "local quente" virar inverno.
+    if tipo_turno == "recomendacao":
+        if re.search(r'local quente|calor|verao|verão|fresco|leve', t):
+            return "sug_tec_quente"
+        if re.search(r'\blogo\b|bordad|estamp', t):
+            return "personalizacao_bordado"
+        if re.search(r'barat|custo|econom|mais em conta|menor valor', t):
+            return "setor_vendas"
+        if re.search(r'empresa|corporativ|uniforme|evento', t):
+            return "sug_trabalho"
+
+    if re.search(r'melhor tecido|qual tecido|tecido ideal|sugere tecido|recomenda tecido', t):
+        if re.search(r'frio|inverno|quentinho|aquecer', t):
+            return "sug_tec_frio"
+        if re.search(r'calor|quente|verao|verão|fresco|leve', t):
+            return "sug_tec_quente"
+
+    # ── 0d. MULTI-INTENÇÃO ──────────────────────────────────────
+    # Se a frase toca 3+ tópicos distintos (prazo, preço, produto, cor, tecido,
+    # cuidados, tamanho, personalização, entrega) e é claramente uma PERGUNTA
+    # (não pedido/consulta/cancelamento), listamos o que entendemos e perguntamos
+    # por qual começar. Sem isso, o bot escolhia UM tópico arbitrário e ignorava
+    # o resto (ex: "qual o prazo e o preco e voces fazem moletom e como lavo"
+    # só respondia cuidados_moletom).
+    #
+    # Guardas pra NÃO sequestrar mono-intenção:
+    #   - pedido / menu em andamento (sessão tem outro fluxo)
+    #   - tem quantidade + produto (é pedido/orçamento — regras compostas
+    #     cuidam melhor)
+    #   - tem número de pedido (status/consulta)
+    #   - verbos de ação forte (cancelar/alterar/fechar/registrar/consultar/
+    #     rastrear) — vai pras regras específicas dessas ações
+    _tem_qtd_produto = bool(
+        slots_efetivos.get("quantidade") and slots_efetivos.get("produto")
+    )
+    _tem_pedido_id = bool(slots_efetivos.get("numero_pedido"))
+    _tem_verbo_acao = bool(re.search(
+        r'\bcancelar\b|\balterar\b|\bmudar\b|\btrocar\b|\bfechar\b|'
+        r'\bvou levar\b|\bencomend\w+|\bconsultar\b|\brastrear\b|\bstatus\b|'
+        r'\bregistrar\b|\bcadastrar\b', t
+    ))
+    _sessao_ativa = sessao and (
+        sessao.get("registro_pedido") or sessao.get("aguardando_mais_produto")
+        or sessao.get("aguardando_opcao") or sessao.get("aguardando_id")
+    )
+    if not (_tem_qtd_produto or _tem_pedido_id or _tem_verbo_acao or _sessao_ativa):
+        topicos = _detectar_topicos_multi(t)
+        # ≥ 4 tópicos: 3 costuma bater combinações que já têm intenção dedicada
+        # (ex: "prazo + produto + personalização" → prazo_com_personalizacao).
+        # A partir de 4 é claramente pergunta múltipla sem intenção específica.
+        if len(topicos) >= 4:
+            if sessao is not None:
+                sessao["topicos_pendentes"] = sorted(topicos)
+            return "multi_intencao"
+
     # ── 0b. Fluxos de CRUD de pedido em andamento ────────────────
     if sessao:
-        # Registro de pedido (CREATE) em andamento → continua coletando os campos.
+        # Registro de pedido em andamento. Perguntas e ações fortes interrompem
+        # o formulário em vez de serem tratadas como campo inválido.
         if sessao.get("registro_pedido") is not None:
-            return "registrar_pedido"
+            if slots_turno.get("numero_pedido") or _parece_status_pedido_existente(t):
+                sessao["registro_interrompido"] = "status_pedido"
+                return "status_pedido"
+            if re.search(r'\bcancelar\b|\bcancelamento\b', t):
+                return "cancelar_pedido"
+            if re.search(r'\balterar\b|\bmudar\b|\btrocar\b', t) and re.search(r'pedido|cor|tamanho|quantidade', t):
+                sessao["registro_interrompido"] = "alterar_pedido_especifico"
+                return "alterar_pedido_especifico"
+            pendente = sessao.get("registro_campo_pendente")
+            respondeu_pendente = bool(
+                (pendente == "produto" and slots_turno.get("produto")) or
+                (pendente == "quantidade" and slots_turno.get("quantidade")) or
+                (pendente == "cor" and slots_turno.get("cor")) or
+                (pendente == "tecido" and slots_turno.get("tecido")) or
+                (pendente == "tamanho" and slots_turno.get("grade")) or
+                (pendente == "personalizacao" and slots_turno.get("personalizacao"))
+            )
+            pergunta_explicita = _parece_pergunta(t) and re.search(
+                r'\?|\bquanto\b|\bqual\b|\bquais\b|\bquando\b|\bcomo\b|\bposso\b|\bpode\b|\btem\b', t
+            )
+            if pergunta_explicita:
+                sessao["registro_interrompido"] = "duvida"
+                # Continua para as regras normais do classificador.
+            elif not respondeu_pendente and _parece_pergunta(t):
+                sessao["registro_interrompido"] = "duvida"
+                # Continua para as regras normais do classificador.
+            else:
+                return "registrar_pedido"
         # Acabou de registrar um item e perguntamos "quer mais um produto?".
         if sessao.get("aguardando_mais_produto"):
             if re.search(r'\bnao\b|\bnão\b|\bnn\b|so isso|nada mais|mais nada|'
@@ -133,6 +419,33 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     ):
         return "alterar_pedido_especifico"
 
+    if sessao and sessao.get("aguardando_id"):
+        if re.search(r'como (ta|esta)|andamento|status|numero|número|nao tenho|não tenho|nao sei|não sei', t):
+            return sessao.get("aguardando_id")
+        if sessao.get("aguardando_id") == "alterar_pedido_especifico" and (slots_turno.get("cor") or slots_turno.get("grade")):
+            return "alterar_pedido_especifico"
+
+    if re.search(r'\bescola\b|\bescolar\b|\bfarda\b', t):
+        return "uniforme_escolar"
+
+    if re.search(r'amaciante', t):
+        return "manut_amaciante"
+
+    if re.search(r'quanto tempo de mercado|tempo de mercado|anos de mercado', t):
+        return "sobre_marca_tempo"
+
+    if re.search(r'fibra reciclada|rpet|reciclad', t):
+        return "sustent_fibra_reciclada"
+
+    if re.search(r'algodao.*organico|organico.*algodao', t):
+        return "sustent_algodao_organico"
+
+    if re.search(r'tinta.*toxic|toxica|tóxica|toxico|tóxico', t):
+        return "sustent_quimicos"
+
+    if _parece_status_pedido_existente(t):
+        return "status_pedido"
+
     # CREATE: iniciar o registro de um pedido novo
     # ("quero fazer um pedido", "registrar pedido", "novo pedido"...)
     if re.search(r'\b(registrar|cadastrar|abrir|criar)\b.*\bpedido\b', t) or \
@@ -140,18 +453,22 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
        re.search(r'\b(novo|outro|mais um|mais) pedido\b', t):
         return "registrar_pedido"
 
-    # CREATE implícito: o cliente já está PEDINDO/ENCOMENDANDO, não só perguntando.
-    # "quero 100 camisas de linho", "vou querer", "quero comprar 200 polos". O bot
-    # tem que SAIR do modo informação e começar a registrar (aproveitando produto/
-    # quantidade/tecido já ditos). Distingue de "quero SABER/ver/quanto custa".
+    # Revenda/atacadista vem antes do registro. "quero comprar 500 pra revender"
+    # é exploração comercial, não autorização para abrir pedido.
+    if re.search(r'revend|atacadista|distribuidor|sacoleira', t):
+        return "revenda"
+
+    # CREATE implícito: só começa registro quando há sinal claro de fechamento.
+    # "quero comprar 500 camisetas" pode ser cotação; "vou fechar/pode registrar"
+    # é pedido de fato.
     if not re.search(r'\bsaber\b|\bver\b|\bconhec\w+|\bsobre\b|informac|d[uú]vida|'
-                     r'\bquais\b|\bqual\b|\bcomo\b|\bquanto\b|\bpreco\b|\bpreço\b', t):
+                     r'\bquais\b|\bqual\b|\bcomo\b|\bquanto\b|\bpreco\b|\bpreço\b|'
+                     r'\bdesconto\b|\bprazo\b|\btempo\b|\bcor(es)?\b|\btamanhos?\b', t):
         frase_pedido = re.search(
             r'\bvou querer\b|\bvou levar\b|\bvou fechar\b|\bpode fechar\b|'
-            r'\bfechar (o )?pedido\b|\bencomend\w+|\bquero (fazer|fechar)\b', t)
-        verbo_querer = re.search(r'\b(quero|queria|comprar|pedir)\b', t)
-        if frase_pedido or (verbo_querer and slots_efetivos.get("produto")
-                            and slots_efetivos.get("quantidade")):
+            r'\bpode registrar\b|\bregistrar esse pedido\b|\bfechar (o )?pedido\b|'
+            r'\bencomend\w+|\bquero (fazer|fechar)\b|\bbora fechar\b', t)
+        if frase_pedido:
             return "registrar_pedido"
 
     # Obs: "avançar etapa" NÃO é ação do cliente (é da produção interna), então
@@ -197,7 +514,23 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     # ── 3. Intenções compostas (preço/prazo) ─────────────────────
     quantidade = slots_efetivos.get("quantidade")
     produto = slots_efetivos.get("produto")
+    if produto and not quantidade and re.search(r'preco|preço|valor|custa|quanto fica|prazo|tempo', t):
+        m_qtd_solto = re.search(r'\b(\d{1,6})\b', t)
+        if m_qtd_solto:
+            quantidade = int(m_qtd_solto.group(1))
+            slots_efetivos["quantidade"] = quantidade
     prazo_desejado = slots_efetivos.get("prazo_desejado") or slots_turno.get("prazo_desejado")
+
+    if tipo_turno == "correcao_orcamento":
+        qtd = numero_solto_de_correcao(t)
+        if qtd and produto:
+            slots_efetivos["quantidade"] = qtd
+            quantidade = qtd
+        if produto and quantidade:
+            ultimo = (sessao or {}).get("ultimo_assunto")
+            if ultimo in {"combinado_prazo_qtd_produto", "combinado_prazo_personalizacao_produto"}:
+                return ultimo
+            return "combinado_preco_qtd_produto"
 
     # ── 3b. Prazo COM personalização ──────────────────────────────
     # "prazo com bordado/silk/dtf" caía em personalizacao_X (a DESCRIÇÃO da técnica)
@@ -239,6 +572,10 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
         "viabilidade_producao",
     }
     if sessao and sessao.get("ultimo_assunto") in ULTIMO_ORCAMENTO:
+        qtd_solta = _numero_solto(t)
+        if qtd_solta and produto:
+            slots_efetivos["quantidade"] = qtd_solta
+            return sessao["ultimo_assunto"]
         slots_novos_chaves = set(slots_turno.keys()) - {"quantidade", "produto"}
         # se a mensagem só adicionou refinamento (sem mudar produto/qtd),
         # e ainda temos qtd+produto no foco, herda o assunto
@@ -255,6 +592,18 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
         r'fica bo|serve|aceita|recomend|ideal|funciona|\be bom\b|vale a pena|'
         r'adequad|compat|melhor tecido|qual tecido|\btem\b|disponiv|estoque', t
     ))
+
+    if tipo_turno == "compatibilidade" and slots_efetivos.get("tecido") and produto:
+        return "combinado_tecido_em_produto"
+
+    if slots_efetivos.get("cor") and slots_efetivos.get("tecido")        and (slots_turno.get("cor") or slots_turno.get("tecido"))        and re.search(r'\bem\b|na cor|tem|disponiv|estoque|da\??', t):
+        return "combinado_cor_em_tecido"
+
+    if slots_efetivos.get("tecido") and produto        and (slots_turno.get("tecido") or slots_turno.get("produto"))        and re.search(r'\bem\b|da\??|dá\??|posso|pode|combina|funciona', t):
+        return "combinado_tecido_em_produto"
+
+    if produto and slots_efetivos.get("cor") and re.search(r'\btem\b|disponiv|estoque|cor', t):
+        return "cores_basicas"
 
     if slots_efetivos.get("tecido") and slots_efetivos.get("personalizacao") \
        and (slots_turno.get("tecido") or slots_turno.get("personalizacao")) \
@@ -317,10 +666,6 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
        or re.search(r'quanto mais.*barato', t):
         return "combinado_desconto_volume"
 
-    # Revenda/atacadista → condições de revenda (não vendas genérico).
-    if re.search(r'revend|atacadista|distribuidor|sacoleira', t):
-        return "revenda"
-
     # Fornecedor/origem DO TECIDO → tec_origem (o setor de compras é pra quem
     # quer VENDER material PRA gente, não pra quem pergunta de onde vem o nosso).
     if re.search(r'(fornecedor|origem|de onde vem).{0,14}tecido|'
@@ -363,7 +708,20 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     # produto como camiseta_premium (cobre "camisas premium", typo "premiun" etc);
     # pedido com quantidade já virou registrar_pedido lá em cima.
     if produto == "camiseta_premium":
-        return "produto_detalhe"
+        if re.search(r'compara|comparar|diferen[çc]a|basica|básica', t):
+            return "comparar_premium_basica"
+        if re.search(r'boa|bom|duravel|dura|qualidade|vale a pena|compensa', t):
+            return "qualidade_durabilidade"
+        sinal_descricao = re.search(
+            r'\bpremium\b|\bme conta\b|\bfala\b|\bo que e\b|\bo que é\b|\bsobre\b|\bconhecer\b|\btudo sobre\b',
+            t
+        )
+        sinal_topico = re.search(
+            r'preco|preço|valor|prazo|tempo|cor|cores|tecido|tamanho|grade|lav|cuid',
+            t
+        )
+        if sinal_descricao and not sinal_topico:
+            return "produto_detalhe"
 
     # "qual/quais tecido(s) pra <produto>" → lista os tecidos que combinam com o
     # produto. Só quando NENHUM tecido específico foi citado (senão "camiseta de
@@ -407,18 +765,27 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     melhor_score = 0
     melhor_peso = -1.0
     melhor_intencao = None
+    melhor_kw = ""
     for _, row in intencoes.iterrows():
         keywords = str(row["palavras_chave"]).strip()
         if not keywords or keywords == "nan":
             continue
+        # Intenções que EXIGEM slots (produto/tecido/cor/qtd...) NÃO podem ser
+        # alcançadas por fuzzy: um typo tipo "camizeta" casava por similaridade e
+        # o responder montava "grade None para None". Elas só vêm pelas regras de
+        # slot (etapa 6); aqui a gente pula.
+        if row["id_intencao"] in _SO_POR_SLOT:
+            continue
         peso = _peso(row)
         for kw in keywords.split("|"):
             kw = normalizar(kw.strip())
-            # Keywords curtíssimas (≤3 letras: "vei", "bro", "dtf", "la") NÃO entram
-            # no fuzzy: partial_ratio de 2-3 letras casa dentro de qualquer palavra
-            # longa ("vei" em "sustenta-vei-s"/"dura-vei-s") e gera intenção absurda.
-            # O match exato dessas já foi feito na etapa 8; aqui elas só dão ruído.
-            if len(kw) < 4:
+            # Keywords curtas (≤4 letras: "silk", "selo", "vei", "dtf", "la") NÃO
+            # entram no fuzzy: partial_ratio casa dentro de qualquer palavra longa
+            # ("silk" em "bra-sil", "selo" em "sel-ect", "vei" em "sustenta-vei-s")
+            # e gera intenção absurda. O match exato dessas já foi feito na etapa
+            # 8; aqui elas só dão ruído. Mudei de <4 pra <5 depois do stress test
+            # pra fechar os falso-positivos com "brasil"/"select"/"toca musica".
+            if len(kw) < 5:
                 continue
             # Mensagem MUITO mais curta que a keyword? Pula. Senão um token solto
             # casa 100% dentro de uma keyword composta ("preto" dentro de "tem
@@ -433,8 +800,15 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
                 melhor_score = score
                 melhor_peso = peso
                 melhor_intencao = row["id_intencao"]
+                melhor_kw = kw
 
-    if melhor_score >= 85:
+    # Threshold em DUAS FAIXAS depois do stress test:
+    # - 90+ com qualquer keyword (curta e específica: "duravel"→"duraveis")
+    # - 85+ SÓ se a keyword vencedora é multi-palavra ou tem ≥7 letras
+    #   (frases/keywords longas não colidem espúrio; palavras curtas como
+    #   "troca"→"toca musica" (88%) ficam bloqueadas)
+    if melhor_score >= 90 or \
+       (melhor_score >= 85 and (len(melhor_kw) >= 7 or ' ' in melhor_kw)):
         return melhor_intencao
 
     # ── 10. Antes de desistir: se a pessoa citou um PRODUTO ou TECIDO (sem uma
@@ -450,9 +824,11 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
         "vestido_midi": "cat_vestidos", "vestido_longo": "cat_vestidos",
         "uniforme_polo": "cat_uniformes", "uniforme_jaleco": "cat_uniformes",
     }
-    if produto in _CAT_POR_PRODUTO:
-        return _CAT_POR_PRODUTO[produto]
-    if slots_efetivos.get("tecido"):
+    if slots_turno.get("produto") in _CAT_POR_PRODUTO:
+        return _CAT_POR_PRODUTO[slots_turno.get("produto")]
+    if slots_turno.get("tecido"):
         return "tecidos"
+    if sessao and sessao.get("aguardando_id"):
+        return sessao.get("aguardando_id")
 
     return "fallback"
