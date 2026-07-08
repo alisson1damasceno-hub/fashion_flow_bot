@@ -400,6 +400,18 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
                          r'finaliz|encerr|pode fechar|e so|era so|chega|ta bom|'
                          r'\bnop\b', t):
                 return "finalizar_pedidos"
+            # Mensagem é SÓ personalização (bordado/silk/dtf) sem produto novo?
+            # Cliente esqueceu de dizer no fluxo do item 1 — corrigir o último
+            # item do carrinho em vez de começar item 2.
+            personalizacao_solta = (
+                slots_turno.get("personalizacao") and not slots_turno.get("produto")
+                and not slots_turno.get("quantidade") and not slots_turno.get("cor")
+                and not slots_turno.get("tecido") and not slots_turno.get("grade")
+            )
+            if personalizacao_solta and sessao.get("carrinho"):
+                sessao["carrinho"][-1]["personalizacao"] = slots_turno["personalizacao"]
+                # mantém aguardando_mais_produto e volta a perguntar
+                return "atualizar_ultimo_item"
             # qualquer outra coisa (um "sim" ou já um novo produto) → novo item
             sessao["aguardando_mais_produto"] = False
             return "registrar_pedido"
@@ -434,10 +446,73 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if re.search(r'quanto tempo de mercado|tempo de mercado|anos de mercado', t):
         return "sobre_marca_tempo"
 
+    # ── Perguntas de NEGOCIAÇÃO no pedido (P7) ────────
+    # Cliente empresa/atacado pergunta sobre combinações e variações antes de
+    # fechar: "posso combinar bordado com silk?", "cor por cor pode variar?",
+    # "500 pretas ou 250/250?", "posso misturar tamanhos?". Sem intenção
+    # dedicada, essas caíam no catálogo do produto — inútil pra negociação.
+    if re.search(r'\bpode(?:m)?\s+(?:combinar|misturar|variar|mesclar)\b|'
+                 r'\bposso\s+(?:combinar|misturar|variar|mesclar)\b|'
+                 r'\bda pra combinar\b|\bcombinar\s+(bordad|silk|dtf|estamp)|'
+                 r'\bmisturar\s+(cor|tamanhos?|modelos?|produtos?)|'
+                 r'\bvariar?\s+(cor|tamanhos?)|'
+                 r'\bmix (de |em )?(cor|tamanhos?)|'
+                 r'\b(\d+)\s+(pret\w*|branc\w*|azul|verde|vermelh\w*|amarel\w*)\s+(?:e|,|ou)\s+(\d+)\s+(pret\w*|branc\w*|azul|verde|vermelh\w*|amarel\w*)', t):
+        return "negociacao_pedido"
+
+    # ── Perguntas GRANULARES dentro de tópico ─────────
+    # "quantas cores no silk?"/"quantas cores no bordado?" — o cliente quer o
+    # limite técnico (6 no silk, 12 no bordado), não a descrição inteira nem o
+    # menu de cores em estoque.
+    if re.search(r'\bquantas?\s+cores\b|\blimite\s+de\s+cores\b|\bnumero\s+de\s+cores\b', t):
+        return "cores_limite_tecnica"
+    # "resolucao?" (arte) — pergunta pontual sobre requisitos de arquivo.
+    if re.search(r'\bresolu[cç][aã]o\b|\bdpi\b|\bqualidade\s+da\s+arte\b|\btamanho\s+do\s+arquivo\b|'
+                 r'\bqual\s+formato\b|\baceita\s+(ai|pdf|png|svg|cdr|jpg|vetor)\b', t):
+        return "personalizacao_envio_arte"
+    # "tem taxa?" — só é urgência quando o contexto é de urgência.
+    if re.search(r'\btem\s+taxa\??|\bpaga\s+taxa\??|\btaxa\s+de\s+urg', t):
+        return "prazo_urgente"
+
+    # ── Perguntas BINÁRIAS comuns ("são/produzem/aceitam/têm X?") ──
+    # Sem essas regras dedicadas, "voces sao brasileiros?" caía em fallback e
+    # "as pecas sao boas?" idem. Cliente espera sim/não com contexto — o classifier
+    # já tinha as intenções certas, faltava só o roteamento por linguagem natural.
+    if re.search(r'(\bs[aã]o|\bvoces s[aã]o|\bvcs s[aã]o)\s+(brasileir\w*|nacional|do brasil)|'
+                 r'produzem\s+(no\s+)?brasil|onde (fica|é|e)\s+(a\s+)?f[aá]brica|'
+                 r'\bque\s+lugar\b|\bde\s+onde\s+s[aã]o\b', t):
+        return "producao_onde"
+
+    if re.search(r'(\bs[aã]o|\bvoces s[aã]o|\bpecas? s[aã]o)\s+(boas?|durav[eé]is?|de qualidade|bem feitas?|resistentes?)|'
+                 r'peca\w* aguenta\w*|resiste', t):
+        return "qualidade_durabilidade"
+
+    if re.search(r'(\baceita|\baceitam)\s+(cartao|cart[aã]o|boleto|pix|cnpj|cr[eé]dito|d[eé]bito)|'
+                 r'\bformas? de pagamento\b|\bmeio de pagamento\b|parcel\w+', t):
+        return "setor_vendas"
+
+    if re.search(r'\b(voces|vcs)?\s*(atendem|vendem|entregam|mandam|enviam)\s+(pra|para)\s+'
+                 r'(o\s+|a\s+)?(brasil|sp|sao paulo|rj|rio|mg|belo|salvador|recife|fortaleza|ceara|'
+                 r'curitiba|porto alegre|florianopolis|manaus|goiania|df|brasilia|todo brasil|todo o pais|todo pais)', t):
+        return "setor_logistica"
+
+    if re.search(r'\btem\s+(a\s+)?(cor\s+)?(pret\w*|branc\w*|cinza|marinho|royal|azul|vermelh\w*|rosa|amarel\w*|verde|vinho|bege|marrom|laranja|roxo|lilas)', t) or \
+       re.search(r'\b(pret\w*|branc\w*|cinza|marinho|royal|azul|vermelh\w*|rosa|amarel\w*|verde|vinho|bege|marrom|laranja|roxo|lilas)\s+tem\??$', t):
+        return "cores_basicas"
+
+    if re.search(r'\btem\s+(loja|site|instagram|whatsapp|contato)\b|'
+                 r'\btem\s+(um\s+)?telefone\b|\bposso\s+visitar\b', t):
+        return "sobre_o_bot"
+
+    if re.search(r'\bposso\s+(pedir|comprar)\s+(so\s+|apenas\s+)?(1|um|uma|pouco|pequen)|'
+                 r'\bqual\s+o\s+m[ií]nimo|\bpedido\s+m[ií]nimo|\bmenos\s+de\s+\d+', t):
+        return "qtd_pequena_volume"
+
     if re.search(r'fibra reciclada|rpet|reciclad', t):
         return "sustent_fibra_reciclada"
 
-    if re.search(r'algodao.*organico|organico.*algodao', t):
+    if re.search(r'algodao.*organico|organico.*algodao|'
+                 r'(trabalh\w+|tem|usam|fazem|voces)\s+(com\s+)?(algod\w*\s+)?organic', t):
         return "sustent_algodao_organico"
 
     if re.search(r'tinta.*toxic|toxica|tóxica|toxico|tóxico', t):
@@ -569,7 +644,19 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     ULTIMO_ORCAMENTO = {
         "combinado_preco_qtd_produto",
         "combinado_prazo_qtd_produto",
+        "combinado_prazo_personalizacao_produto",
+        "combinado_preco_personalizacao",
         "viabilidade_producao",
+    }
+    # Também tratamos como orçamento os casos onde o assunto anterior era GENÉRICO
+    # (prazo_padrao, setor_vendas) — cliente que perguntou "quanto tempo pra uma
+    # camiseta" e agora diz "e 100?" está claramente pedindo prazo pra 100
+    # camisetas. Sem isso, cai em cat_camisetas.
+    ULTIMO_QUASE_ORCAMENTO = {
+        "prazo_padrao": "combinado_prazo_qtd_produto",
+        "prazo_com_personalizacao": "combinado_prazo_personalizacao_produto",
+        "prazo_urgente": "combinado_prazo_qtd_produto",
+        "setor_vendas": "combinado_preco_qtd_produto",
     }
     if sessao and sessao.get("ultimo_assunto") in ULTIMO_ORCAMENTO:
         qtd_solta = _numero_solto(t)
@@ -581,6 +668,12 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
         # e ainda temos qtd+produto no foco, herda o assunto
         if slots_novos_chaves and quantidade and produto:
             return sessao["ultimo_assunto"]
+
+    if sessao and sessao.get("ultimo_assunto") in ULTIMO_QUASE_ORCAMENTO:
+        qtd_solta = _numero_solto(t)
+        if qtd_solta and produto:
+            slots_efetivos["quantidade"] = qtd_solta
+            return ULTIMO_QUASE_ORCAMENTO[sessao["ultimo_assunto"]]
 
     # ── 6. Combinações por slot ───────────────────────────────────
     # Só tratamos como pergunta de COMPATIBILIDADE/DISPONIBILIDADE se a frase

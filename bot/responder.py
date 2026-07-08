@@ -188,6 +188,14 @@ PERGUNTAS_REGISTRO = {
 # Palavras que abortam o registro no meio do caminho.
 ABORTAR_REGISTRO = {"cancelar", "parar", "sair", "deixa pra la", "esquece", "esquecer", "desistir"}
 
+# Palavras que sinalizam "não quero mais adicionar" — se aparecem quando o form
+# estava pedindo produto (mas o cliente já tem itens no carrinho), fechar em vez
+# de tratar como resposta inválida.
+FECHAR_PEDIDO_FRASES = re.compile(
+    r'^(so isso|\bnao\b|\bnão\b|nada mais|mais nada|era so|era só|pode fechar|'
+    r'ja chega|chega|finaliz|acabou|encerrar?)\s*[!.]*$'
+)
+
 
 # Rótulo amigável de cada campo, pra mensagem de "isso não parece X".
 ROTULO_CAMPO = {
@@ -316,6 +324,33 @@ def _fluxo_registrar(slots, sessao, mensagem, dados=None):
         sessao["registro_pedido"] = None
         sessao["registro_campo_pendente"] = None
         return "Tudo bem, cancelei o registro do pedido. Posso ajudar em outra coisa?"
+
+    # "so isso"/"nao" no meio do form quando JÁ HÁ itens no carrinho: cliente
+    # quis fechar o pedido (provavelmente errou/confundiu). Em vez de tratar como
+    # resposta inválida, fecha o pedido.
+    if sessao.get("carrinho") and FECHAR_PEDIDO_FRASES.match(normalizar(mensagem).strip()):
+        # Se o item em montagem já tem os campos essenciais (produto+quantidade),
+        # salva-o antes de fechar (senão o cliente perderia o item novo).
+        reg_atual = sessao.get("registro_pedido") or {}
+        if reg_atual.get("produto") and reg_atual.get("quantidade"):
+            # completa com "nenhuma" quando personalização faltou (é o campo mais
+            # comum onde o cliente responde "so isso" achando que fechou tudo).
+            if not reg_atual.get("personalizacao"):
+                reg_atual["personalizacao"] = "nenhuma"
+            if not reg_atual.get("tecido"):
+                reg_atual["tecido"] = "a definir"
+            if not reg_atual.get("cor"):
+                reg_atual["cor"] = "a definir"
+            if not reg_atual.get("tamanho"):
+                reg_atual["tamanho"] = "a definir"
+            sessao["carrinho"].append(dict(reg_atual))
+        sessao["registro_pedido"] = None
+        sessao["registro_campo_pendente"] = None
+        carrinho = sessao.get("carrinho", [])
+        sessao["aguardando_mais_produto"] = False
+        sessao["carrinho"] = []
+        cliente = sessao.get("nome_cliente", "")
+        return criar.registrar_pedido_lote(carrinho, cliente)["mensagem"]
 
     primeiro = sessao.get("registro_pedido") is None
     reg = sessao.get("registro_pedido") or {}
@@ -553,6 +588,17 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             "A disponibilidade depende do produto e da cor escolhida."
         )
 
+    if intencao == "negociacao_pedido":
+        # Cliente perguntou sobre combinar/misturar/variar no mesmo pedido.
+        # Resposta comercial: sim/depende + próximo passo pra fechamento.
+        return (
+            "Dá pra fazer: no mesmo pedido você pode combinar cor por cor, variar tamanhos "
+            "dentro da grade, misturar bordado e silk em peças diferentes e até dividir "
+            "quantidades por variação (ex: 250 pretas + 250 brancas). Combinar duas técnicas "
+            "na MESMA peça (bordado + silk) é possível, mas encarece — vendas confirma o "
+            "acréscimo. Me diz como você quer dividir que eu registro no pedido."
+        )
+
     if intencao == "comparar_premium_basica":
         return (
             "A camiseta premium usa algodão pima penteado: toque mais macio, fio mais fino "
@@ -609,6 +655,28 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
 
         if intencao == "setor_vendas":
             perfil = (sessao or {}).get("perfil_recomendacao", {})
+            # GROUNDING: se o cliente JÁ disse produto/qtd/personalização, ecoar
+            # em vez de pedir de novo — respeita Grice (Relation) e mostra que
+            # o bot está prestando atenção.
+            focos = (sessao or {}).get("foco_atual", {})
+            produto_foco = focos.get("produto") or (slots or {}).get("produto")
+            qtd_foco = focos.get("quantidade") or (slots or {}).get("quantidade")
+            pers_foco = focos.get("personalizacao") or (slots or {}).get("personalizacao")
+            dados_ja_ditos = [x for x in (produto_foco, qtd_foco, pers_foco) if x]
+
+            if dados_ja_ditos and repeticoes == 0:
+                partes = []
+                if qtd_foco: partes.append(f"{qtd_foco} peças")
+                if produto_foco: partes.append(produto_foco.replace("_", " "))
+                if pers_foco and pers_foco != "nenhuma":
+                    partes.append(f"com {pers_foco.replace('_', ' ')}")
+                resumo = ", ".join(partes) if partes else "o pedido"
+                return (
+                    f"Pra {resumo}, o valor final quem confirma é vendas — mas eu consigo "
+                    f"dar uma estimativa aqui na hora. Se o que falta é só quantidade ou "
+                    f"personalização, é só me dizer que eu calculo."
+                )
+
             base = (
                 "Pensando em menor preço, normalmente camiseta básica ou polo simples sem muitas cores de personalização "
                 "fica mais em conta. Para comparar valor final, vendas precisa de produto, quantidade, logo/personalização e prazo."
@@ -690,6 +758,21 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
             "Para logo de empresa, o bordado é a opção mais profissional e durável, especialmente em polo e uniforme. "
             "Se o logo tiver muitas cores ou degradê, DTF pode preservar melhor a arte; se for grande volume, silk pode reduzir custo."
         )
+
+    # ── Atualizar último item do carrinho (cliente disse personalização
+    #    depois de já ter fechado o item, ainda pensando no anterior) ──
+    if intencao == "atualizar_ultimo_item":
+        carrinho = (sessao or {}).get("carrinho", [])
+        if carrinho:
+            item = carrinho[-1]
+            pers = item.get("personalizacao", "").replace("_", " ") or "nenhuma"
+            n = len(carrinho)
+            return (
+                f"Corrigi o item {n}: {item.get('quantidade')}x "
+                f"{item.get('produto', '').replace('_', ' ')} "
+                f"{item.get('cor', '').replace('_', ' ')} com {pers}. "
+                "Quer adicionar mais algum produto? (me diz o próximo, ou 'não' pra fechar)"
+            )
 
     # ── CREATE: registrar pedido (coleta os campos ao longo da conversa) ──
     if intencao == "registrar_pedido":

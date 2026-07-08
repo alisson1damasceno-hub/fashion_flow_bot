@@ -17,6 +17,9 @@ INTERNAS = {
     "sobre_marca_tempo",
     "sustent_algodao_organico",
     "sustent_fibra_reciclada",
+    "atualizar_ultimo_item",   # correção de perso do item anterior no carrinho
+    "clarificacao",             # confidence gating (R4)
+    "negociacao_pedido",        # perguntas de negociação B2B (P7)
 }
 
 CRUD = {
