@@ -841,4 +841,19 @@ def classificar(mensagem, slots_turno, slots_efetivos, intencoes, sessao=None):
     if slots_efetivos.get("tecido"):
         return "tecidos"
 
+    # ── 11. CLARIFICAÇÃO por ambiguidade (two-stage confidence gating) ──
+    # Se nenhuma regra específica pegou E o score do top-1 é baixo E os top-2
+    # estão empatados (diff < 0.05), oferecer as duas opções em vez de escolher
+    # arbitrariamente. Padrão de two-stage NLU: alta confiança → executa; média
+    # com empate → clarifica; baixa → fallback.
+    candidatas = (sessao or {}).get("intencao_candidatas", []) if sessao else []
+    if len(candidatas) >= 2 and candidatas[0]["score"] < 0.55:
+        diff = candidatas[0]["score"] - candidatas[1]["score"]
+        if diff < 0.05 and candidatas[0]["intencao"] != candidatas[1]["intencao"]:
+            if sessao is not None:
+                sessao["candidatas_ambiguas"] = [
+                    candidatas[0]["intencao"], candidatas[1]["intencao"]
+                ]
+            return "clarificacao"
+
     return "fallback"

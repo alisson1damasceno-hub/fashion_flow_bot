@@ -10,6 +10,75 @@ from bot.pedidos import criar, consultar, atualizar, cancelar
 
 
 
+# Rótulo humano por prefixo/id de intenção — usado pela clarificação (R4).
+# Ordem importa: prefixos específicos primeiro.
+_LABELS_INTENCAO_PREFIXO = [
+    ("combinado_preco", "preço"),
+    ("combinado_prazo", "prazo"),
+    ("combinado_desconto", "desconto"),
+    ("combinado_cor", "cores"),
+    ("combinado_tecido", "tecido"),
+    ("combinado_tamanho", "tamanhos"),
+    ("combinado_gramatura", "gramatura"),
+    ("combinado_personalizacao", "personalização"),
+    ("prazo_", "prazos"),
+    ("previsao_prazo", "prazos"),
+    ("qualidade", "qualidade"),
+    ("personalizacao", "personalização"),
+    ("sustent_", "sustentabilidade"),
+    ("sustentabilidade", "sustentabilidade"),
+    ("manut_", "cuidados com a peça"),
+    ("manutencao", "cuidados com a peça"),
+    ("cuidados_", "cuidados com a peça"),
+    ("cat_camisetas", "camisetas"),
+    ("cat_moletons", "moletons"),
+    ("cat_calcas", "calças"),
+    ("cat_vestidos", "vestidos"),
+    ("cat_uniformes", "uniformes"),
+    ("cat_infantil", "linha infantil"),
+    ("cat_", "catálogo"),
+    ("sug_trabalho", "sugestão de trabalho"),
+    ("sug_esporte", "sugestão de esporte"),
+    ("sug_festa", "sugestão de festa"),
+    ("sug_inverno", "sugestão de inverno"),
+    ("sug_verao", "sugestão de verão"),
+    ("sug_uniforme", "uniforme corporativo"),
+    ("sug_tec_", "sugestão de tecido"),
+    ("sug_", "sugestão"),
+    ("tec_", "tecidos"),
+    ("tecidos", "tecidos"),
+    ("cores_", "cores"),
+    ("personalizacao_cores", "cores"),
+    ("personalizacao_tamanhos", "tamanhos"),
+    ("producao_", "produção"),
+    ("producao", "produção"),
+    ("status_pedido", "status do pedido"),
+    ("cancelar_pedido", "cancelamento"),
+    ("alterar_pedido", "alteração do pedido"),
+    ("registrar_pedido", "registrar pedido"),
+    ("setor_vendas", "vendas"),
+    ("setor_logistica", "entrega"),
+    ("setor_devolucao", "devolução"),
+    ("setor_compras", "compras/fornecimento"),
+    ("etapas_pedido", "etapas do pedido"),
+    ("catalogo", "catálogo"),
+    ("revenda", "revenda"),
+    ("atende_empresa", "atendimento corporativo"),
+    ("uniforme_escolar", "uniforme escolar"),
+    ("private_label", "marca própria"),
+]
+
+
+def _label_intencao(intencao):
+    """Devolve rótulo amigável pra intenção; fallback é o slug legível."""
+    if not intencao:
+        return "outro assunto"
+    for prefix, label in _LABELS_INTENCAO_PREFIXO:
+        if intencao == prefix or intencao.startswith(prefix + "_") or intencao.startswith(prefix):
+            return label
+    return intencao.replace("_", " ")
+
+
 def _quer_menu(mensagem):
     """Verdadeiro quando o usuário pediu explicitamente opções/lista/menu."""
     t = normalizar(mensagem or "")
@@ -422,6 +491,21 @@ def responder(intencao, slots, dados, sessao=None, mensagem=""):
                 lista = ", ".join(nomes[:-1]) + f" e {nomes[-1]}"
             return (f"Vi que você quer saber sobre vários assuntos: {lista}. "
                     f"Por qual você quer começar?")
+
+    # ── CLARIFICAÇÃO: top-2 candidatas com score empatado ─────
+    # O classifier detectou ambiguidade real e nos passou as duas intenções.
+    # Preferimos perguntar ao cliente qual assunto ele quer do que arriscar
+    # a errada silenciosamente.
+    if intencao == "clarificacao":
+        candidatas = (sessao or {}).get("candidatas_ambiguas", [])
+        if len(candidatas) >= 2:
+            a = _label_intencao(candidatas[0])
+            b = _label_intencao(candidatas[1])
+            if a != b:
+                return (
+                    f"Ficou meio ambíguo pra mim aqui. Você quer saber sobre {a} "
+                    f"ou sobre {b}?"
+                )
 
     if intencao == "manut_amaciante":
         return (
